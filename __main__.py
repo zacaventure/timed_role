@@ -1,15 +1,11 @@
 import discord
 from discord.ext import commands
 import os
-from random import randrange
 from dotenv import load_dotenv
 
-# from data import Data
 
 # load .env variables
 load_dotenv()
-
-failedCommandTumnail = "https://cdn.discordapp.com/emojis/831963313889476648.gif?v=1"
 
 intents = discord.Intents.default()
 intents.members = True
