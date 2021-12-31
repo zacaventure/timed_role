@@ -43,7 +43,6 @@ class Data:
         
         if roleId in server.timedRoleOfServer:
             member.timedRole.append(TimedRole(roleId, server.timedRoleOfServer[roleId]))
-            print(self.servers[0].members)
             self.saveData()
         
     def loadData(self) -> None:

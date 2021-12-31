@@ -59,8 +59,8 @@ async def _showHelpTimeRole(ctx):
     embed.add_field(name="Remove a timed role for the server", value="$removeTimeRole(rtr) \<role\>", inline=False)
     embed.add_field(name="Show all timed role of the server", value="$showTimeRole(str)", inline=False)
     embed.add_field(name="Show all member of a timed role", value="$memberTimeRole(mtr)", inline=False)
-    embed.add_field(name="Manually add a timed role", value="$manualAddTimedRole(matr) \<member\> \<role\> \<numberOfDayUntilExpire\>", inline=False)
-    embed.add_field(name="Manually remove a timed role", value="$manualRemoveTimedRole(mrtr) \<member\> \<role\>", inline=False)
+    embed.add_field(name="Manually add a timed role to a member", value="$manualAddTimedRole(matr) \<member\> \<role\> \<numberOfDayUntilExpire\>", inline=False)
+    embed.add_field(name="Manually remove a timed role to a member", value="$manualRemoveTimedRole(mrtr) \<member\> \<role\>", inline=False)
     embed.add_field(name="See the help window", value="$helpTimeRole(htr)", inline=False)
     await ctx.send(embed=embed)
     

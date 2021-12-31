@@ -13,7 +13,7 @@ class RoleTimeOutChecker(commands.Cog):
     def cog_unload(self):
         self.timeChecker.cancel()
 
-    @tasks.loop(seconds=10)
+    @tasks.loop(seconds=60)
     async def timeChecker(self):
         change = False
         for server in self.data.servers:
