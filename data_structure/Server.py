@@ -3,3 +3,4 @@ class Server:
         self.serverId = serverId
         self.members = []
         self.timedRoleOfServer = {}
+        self.globalTimeRoles = []
