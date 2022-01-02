@@ -9,7 +9,7 @@ class TimedRole:
     def isExpire(self) -> bool:
         now = datetime.datetime.now()
         delta = now - self.addedTime
-        return delta.total_seconds() >= self.numberOfDaysToKeep
+        return delta.days >= self.numberOfDaysToKeep
     
     def getHowManyDayRemaining(self):
         now = datetime.datetime.now()
