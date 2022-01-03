@@ -110,7 +110,7 @@ async def showTimeRole(ctx):
 async def _showHelpTimeRole(ctx):
     embed = discord.Embed()
     embed.add_field(name="Add a new global timed role for the server", value="$addGlobalTimeRole(agtr) \<role\> \<year\> \<month\> \<day\> \[hour=0\]", inline=False)
-    embed.add_field(name="Add a new global timed role for the server", value="$removeGlobalTimeRole(rgtr) \<role\>", inline=False)
+    embed.add_field(name="Remove a global timed role for the server", value="$removeGlobalTimeRole(rgtr) \<role\>", inline=False)
     embed.add_field(name="Add a new timed role for the server", value="$addTimeRole(atr) \<role\> \<numberOfDayUntilExpire\>", inline=False)
     embed.add_field(name="Remove a timed role for the server", value="$removeTimeRole(rtr) \<role\>", inline=False)
     embed.add_field(name="Show all timed role of the server", value="$showTimeRole(str)", inline=False)
