@@ -26,7 +26,7 @@ logger.addHandler(handler)
 
 intents = discord.Intents.default()
 intents.members = True
-bot = commands.Bot(command_prefix='$', intents = intents)
+bot = commands.Bot(command_prefix="%", intents = intents)
 data = Data()
 timeChecker = RoleTimeOutChecker(data, bot)
 
@@ -143,9 +143,9 @@ async def userTimeRole(ctx, member: discord.Member):
 @bot.command(pass_context = True , aliases=["helpTimeRole", "htr"])
 async def _showHelpTimeRole(ctx):
     embed = discord.Embed()
-    embed.add_field(name="Global roles", value="Add a new global timed role for the server \n*$addGlobalTimeRole(agtr) \<role\> \<year\> \<month\> \<day\> \[hour=0\]*\n\nRemove a global timed role for the server\n*$removeGlobalTimeRole(rgtr) \<role\>*", inline=False)
-    embed.add_field(name="Individual Roles", value="Add a new timed role for the server\n*$addTimeRole(atr) \<role\> \<numberOfDayUntilExpire\>*\n\nRemove a timed role for the server\n*$removeTimeRole(rtr) \<role\>*\n\nManually add a timed role to a member\n*$manualAddTimedRole(matr) \<member\> \<role\> \<numberOfDayUntilExpire\>*\n\nManually remove a timed role to a member\n*$manualRemoveTimedRole(mrtr) \<member\> \<role\>*", inline=True)
-    embed.add_field(name="Get information", value="Show all timed role of the server\n*$showTimeRole(str)*\n\nShow all member of a timed role\n*$memberTimeRole(mtr) <role>*\n\nGet all timed role of a user\n*$tr <member>*")
+    embed.add_field(name="Global roles", value="Add a new global timed role for the server \n*%addGlobalTimeRole(agtr) \<role\> \<year\> \<month\> \<day\> \[hour=0\]*\n\nRemove a global timed role for the server\n*%removeGlobalTimeRole(rgtr) \<role\>*", inline=False)
+    embed.add_field(name="Individual Roles", value="Add a new timed role for the server\n*%addTimeRole(atr) \<role\> \<numberOfDayUntilExpire\>*\n\nRemove a timed role for the server\n*%removeTimeRole(rtr) \<role\>*\n\nManually add a timed role to a member\n*%manualAddTimedRole(matr) \<member\> \<role\> \<numberOfDayUntilExpire\>*\n\nManually remove a timed role to a member\n*%manualRemoveTimedRole(mrtr) \<member\> \<role\>*", inline=True)
+    embed.add_field(name="Get information", value="Show all timed role of the server\n*%showTimeRole(str)*\n\nShow all member of a timed role\n*%memberTimeRole(mtr) <role>*\n\nGet all timed role of a user\n*%tr <member>*")
     await ctx.send(embed=embed)
     
 @bot.command(pass_context = True , aliases=["mtr"])
@@ -218,4 +218,4 @@ async def on_member_update(before, after):
             del member.timedRole[i]
             data.saveData()
 
-bot.run(os.getenv('TOKEN'))
+bot.run(os.getenv('TESTBOT'))
