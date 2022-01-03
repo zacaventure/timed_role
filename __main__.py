@@ -8,6 +8,7 @@ from discord.utils import get
 from data import Data
 from data_structure.GlobalTimeRole import GlobalTimedRole
 from data_structure.TimedRole import TimedRole
+from data_structure.Server import Server
 import logging
 
 # load .env variables
@@ -32,7 +33,6 @@ timeChecker = RoleTimeOutChecker(data, bot)
 @bot.event
 async def on_ready():
     print('We have logged in as {0.user}'.format(bot))
-    
     
 @bot.command(pass_context = True , aliases=["agtr"])
 async def addGlobalTimeRole(ctx, role: discord.Role, year: int, month: int, day: int, hour : int = 0):
@@ -98,6 +98,7 @@ async def showTimeRole(ctx):
     
     value=""
     i = 1
+    server.globalTimeRoles.sort()
     for timeRole in server.globalTimeRoles:
         role_get = get(ctx.guild.roles, id=timeRole.roleId)
         value += "{}) {} that expire for everyone on {} \n".format(1, role_get.mention, timeRole.endDate)
@@ -107,18 +108,44 @@ async def showTimeRole(ctx):
     embed = discord.Embed(title="Global timed role of your server", description=value)
     await ctx.send(embed=embed)
     
+@bot.command(pass_context = True , aliases=["tr"])
+async def userTimeRole(ctx, member: discord.Member):
+    server: Server = data.getServer(ctx.guild.id)
+    embed = discord.Embed()
+    
+    value=""
+    i = 1
+    memberData = data.getMember(ctx.guild.id, member.id)
+    memberData.timedRole.sort()
+    for timeRole in memberData.timedRole:
+        role_get = get(ctx.guild.roles, id=timeRole.roleId)
+        value += "{}) {} with {} days expiration\n".format(i, role_get.mention, timeRole.numberOfDaysToKeep)
+        i += 1
+    if value == "":
+        value = "No timed role for {}".format(member.name) 
+    embed = discord.Embed(title="Timed role of {}".format(member.name), description=value)
+    await ctx.send(embed=embed)
+    
+    value=""
+    i = 1
+    server.globalTimeRoles.sort()
+    for timeRole in server.globalTimeRoles:
+        role_get = get(ctx.guild.roles, id=timeRole.roleId)
+        if role_get in member.roles:
+            value += "{}) {} that expire for everyone on {} \n".format(i, role_get.mention, timeRole.endDate)
+        i += 1
+    if value == "":
+        value = "No global timed role for {}".format(member.name) 
+    embed = discord.Embed(title="Global timed role of {}".format(member.name), description=value)
+    await ctx.send(embed=embed)
+    
+    
 @bot.command(pass_context = True , aliases=["helpTimeRole", "htr"])
 async def _showHelpTimeRole(ctx):
     embed = discord.Embed()
-    embed.add_field(name="Add a new global timed role for the server", value="$addGlobalTimeRole(agtr) \<role\> \<year\> \<month\> \<day\> \[hour=0\]", inline=False)
-    embed.add_field(name="Remove a global timed role for the server", value="$removeGlobalTimeRole(rgtr) \<role\>", inline=False)
-    embed.add_field(name="Add a new timed role for the server", value="$addTimeRole(atr) \<role\> \<numberOfDayUntilExpire\>", inline=False)
-    embed.add_field(name="Remove a timed role for the server", value="$removeTimeRole(rtr) \<role\>", inline=False)
-    embed.add_field(name="Show all timed role of the server", value="$showTimeRole(str)", inline=False)
-    embed.add_field(name="Show all member of a timed role", value="$memberTimeRole(mtr) <role>", inline=False)
-    embed.add_field(name="Manually add a timed role to a member", value="$manualAddTimedRole(matr) \<member\> \<role\> \<numberOfDayUntilExpire\>", inline=False)
-    embed.add_field(name="Manually remove a timed role to a member", value="$manualRemoveTimedRole(mrtr) \<member\> \<role\>", inline=False)
-    embed.add_field(name="See the help window", value="$helpTimeRole(htr)", inline=False)
+    embed.add_field(name="Global roles", value="Add a new global timed role for the server \n*$addGlobalTimeRole(agtr) \<role\> \<year\> \<month\> \<day\> \[hour=0\]*\n\nRemove a global timed role for the server\n*$removeGlobalTimeRole(rgtr) \<role\>*", inline=False)
+    embed.add_field(name="Individual Roles", value="Add a new timed role for the server\n*$addTimeRole(atr) \<role\> \<numberOfDayUntilExpire\>*\n\nRemove a timed role for the server\n*$removeTimeRole(rtr) \<role\>*\n\nManually add a timed role to a member\n*$manualAddTimedRole(matr) \<member\> \<role\> \<numberOfDayUntilExpire\>*\n\nManually remove a timed role to a member\n*$manualRemoveTimedRole(mrtr) \<member\> \<role\>*", inline=True)
+    embed.add_field(name="Get information", value="Show all timed role of the server\n*$showTimeRole(str)*\n\nShow all member of a timed role\n*$memberTimeRole(mtr) <role>*\n\nGet all timed role of a user\n*$tr <member>*")
     await ctx.send(embed=embed)
     
 @bot.command(pass_context = True , aliases=["mtr"])
