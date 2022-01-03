@@ -8,10 +8,19 @@ from discord.utils import get
 from data import Data
 from data_structure.GlobalTimeRole import GlobalTimedRole
 from data_structure.TimedRole import TimedRole
-
+import logging
 
 # load .env variables
 load_dotenv()
+
+#logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('discord')
+logger.setLevel(logging.ERROR)
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)
+
 
 intents = discord.Intents.default()
 intents.members = True
@@ -76,6 +85,7 @@ async def showTimeRole(ctx):
     
     value=""
     i = 1
+    server.timedRoleOfServer = {k: v for k, v in sorted(server.timedRoleOfServer.items(), key=lambda item: item[1])} # Sort with expiration days
     for timeRole in server.timedRoleOfServer:
         role_get = get(ctx.guild.roles, id=timeRole)
         value += "{}) {} with {} days expiration\n".format(i, role_get.mention, server.timedRoleOfServer[timeRole])
@@ -124,9 +134,10 @@ async def showMemberTimedRole(ctx, role: discord.Role):
     if description == "":
         description = "Nobody have this timed role"
     embed = discord.Embed(
-        title=role.name,
+        title="Role: {}".format(role.name),
         description=description
     )
+    embed.set_footer(text="Warning: This command only display individual timed role, NOT global roles (for now)")
     await ctx.send(embed=embed)
     
 @bot.command(pass_context = True , aliases=["matr"])

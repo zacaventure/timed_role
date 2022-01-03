@@ -41,6 +41,9 @@ class Data:
         member = self.getMember(serverId, userId)
         server = self.getServer(serverId)
         
+        for timedRole in member.timedRole:
+            if timedRole.roleId == roleId:
+                return
         if roleId in server.timedRoleOfServer:
             member.timedRole.append(TimedRole(roleId, server.timedRoleOfServer[roleId]))
             self.saveData()

@@ -15,3 +15,9 @@ class TimedRole:
         now = datetime.datetime.now()
         delta = now - self.addedTime
         return self.numberOfDaysToKeep - delta.days
+    
+    def __eq__(self, other):
+        return self.roleId == other.roleId and self.numberOfDaysToKeep == other.numberOfDaysToKeep and self.addedTime == other.addedTime
+
+    def __lt__(self, other):
+        return self.getHowManyDayRemaining() < other.getHowManyDayRemaining()
