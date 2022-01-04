@@ -122,8 +122,9 @@ async def userTimeRole(ctx, member: discord.Member):
     memberData.timedRole.sort()
     for timeRole in memberData.timedRole:
         role_get = get(ctx.guild.roles, id=timeRole.roleId)
-        value += "{}) {} with {} days left\n".format(i, role_get.mention, timeRole.getHowManyDayRemaining())
-        i += 1
+        if role_get is not None:
+            value += "{}) {} with {} days left\n".format(i, role_get.mention, timeRole.getHowManyDayRemaining())
+            i += 1
     if value == "":
         value = "No timed role for {}".format(member.name) 
     embed = discord.Embed(title="Timed role of {}".format(member.name), description=value)
@@ -134,7 +135,7 @@ async def userTimeRole(ctx, member: discord.Member):
     server.globalTimeRoles.sort()
     for timeRole in server.globalTimeRoles:
         role_get = get(ctx.guild.roles, id=timeRole.roleId)
-        if role_get in member.roles:
+        if role_get in member.roles and role_get is not None:
             value += "{}) {} that expire for everyone on {} \n".format(i, role_get.mention, timeRole.endDate)
         i += 1
     if value == "":
@@ -259,4 +260,4 @@ async def on_member_update(before, after):
             del member.timedRole[i]
             data.saveData()
 
-bot.run(os.getenv('TOKEN'))
+bot.run(os.getenv('TESTBOT'))
