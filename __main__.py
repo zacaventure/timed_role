@@ -180,7 +180,7 @@ async def showMemberTimedRole(ctx, role: discord.Role):
                 globalTimedRole = server.globalTimeRoles[positionGlobalTimedRole].getRemainingDays()
                 if memberDiscord.id not in memberDays or globalTimedRole < memberDays[member.memberId]:
                     memberDays[memberDiscord.id] = globalTimedRole
-            else:
+            elif not isTimedRoleGlobal and memberDiscord.id not in memberDays:
                 memberNoTimedRole.append(memberDiscord)
                 
     memberDays = {k: v for k, v in sorted(memberDays.items(), key=lambda item: item[1])} # Sort with expiration days 
