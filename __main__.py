@@ -257,4 +257,4 @@ async def on_member_update(before, after):
             del member.timedRole[i]
             data.saveData()
 
-bot.run(os.getenv('TESTBOT'))
+bot.run(os.getenv('TOKEN'))
