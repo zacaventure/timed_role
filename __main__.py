@@ -87,9 +87,9 @@ async def showTimeRole(ctx):
     value=""
     i = 1
     server.timedRoleOfServer = {k: v for k, v in sorted(server.timedRoleOfServer.items(), key=lambda item: item[1])} # Sort with expiration days
-    for timeRole in server.timedRoleOfServer:
-        role_get = get(ctx.guild.roles, id=timeRole)
-        value += "{}) {} with {} days expiration\n".format(i, role_get.mention, server.timedRoleOfServer[timeRole])
+    for roleId, expirationDays in server.timedRoleOfServer.items():
+        role_get = get(ctx.guild.roles, id=roleId)
+        value += "{}) {} with {} days expiration\n".format(i, role_get.mention, expirationDays)
         i += 1
     if value == "":
         value = "No timed role for your server" 
@@ -257,4 +257,4 @@ async def on_member_update(before, after):
             del member.timedRole[i]
             data.saveData()
 
-bot.run(os.getenv('TOKEN'))
+bot.run(os.getenv('TESTBOT'))
