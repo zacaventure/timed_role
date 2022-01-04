@@ -89,8 +89,9 @@ async def showTimeRole(ctx):
     server.timedRoleOfServer = {k: v for k, v in sorted(server.timedRoleOfServer.items(), key=lambda item: item[1])} # Sort with expiration days
     for roleId, expirationDays in server.timedRoleOfServer.items():
         role_get = get(ctx.guild.roles, id=roleId)
-        value += "{}) {} with {} days expiration\n".format(i, role_get.mention, expirationDays)
-        i += 1
+        if role_get is not None:
+            value += "{}) {} with {} days expiration\n".format(i, role_get.mention, expirationDays)
+            i += 1
     if value == "":
         value = "No timed role for your server" 
     embed = discord.Embed(title="Timed role of your server", description=value)
@@ -101,8 +102,9 @@ async def showTimeRole(ctx):
     server.globalTimeRoles.sort()
     for timeRole in server.globalTimeRoles:
         role_get = get(ctx.guild.roles, id=timeRole.roleId)
-        value += "{}) {} expire on {} \n".format(1, role_get.mention, timeRole.endDate)
-        i += 1
+        if role_get is not None:
+            value += "{}) {} expire on {} \n".format(1, role_get.mention, timeRole.endDate)
+            i += 1
     if value == "":
         value = "No global timed role for your server" 
     embed = discord.Embed(title="Global timed role of your server", description=value)
