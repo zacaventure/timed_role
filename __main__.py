@@ -101,11 +101,12 @@ async def showTimeRole(ctx):
     server.globalTimeRoles.sort()
     for timeRole in server.globalTimeRoles:
         role_get = get(ctx.guild.roles, id=timeRole.roleId)
-        value += "{}) {} that expire for everyone on {} \n".format(1, role_get.mention, timeRole.endDate)
+        value += "{}) {} expire on {} \n".format(1, role_get.mention, timeRole.endDate)
         i += 1
     if value == "":
         value = "No global timed role for your server" 
     embed = discord.Embed(title="Global timed role of your server", description=value)
+    embed.set_footer(text="Note: Global roles expire for everyone in the server at the same time !")
     await ctx.send(embed=embed)
     
 @bot.command(pass_context = True , aliases=["tr"])
@@ -119,7 +120,7 @@ async def userTimeRole(ctx, member: discord.Member):
     memberData.timedRole.sort()
     for timeRole in memberData.timedRole:
         role_get = get(ctx.guild.roles, id=timeRole.roleId)
-        value += "{}) {} with {} days expiration\n".format(i, role_get.mention, timeRole.numberOfDaysToKeep)
+        value += "{}) {} with {} days left\n".format(i, role_get.mention, timeRole.getHowManyDayRemaining())
         i += 1
     if value == "":
         value = "No timed role for {}".format(member.name) 
@@ -153,20 +154,58 @@ async def showMemberTimedRole(ctx, role: discord.Role):
     server = data.getServer(ctx.guild.id)
     guild = bot.get_guild(server.serverId)
 
+    isTimedRoleGlobal=False
+    positionGlobalTimedRole=0
+    for globalTimedRole in server.globalTimeRoles:
+        if globalTimedRole.roleId == role.id:
+            isTimedRoleGlobal=True
+            break
+        positionGlobalTimedRole += 1
+        
     description = ""
+    memberDays = {}
+    memberNoTimedRole = []
     for member in server.members:
         for timeRole in member.timedRole:
             if timeRole.roleId == role.id:
-                discord_member = guild.get_member(member.memberId)
-                description += "{} with {} days left \n".format(discord_member.mention, timeRole.getHowManyDayRemaining())
+                memberDays[member.memberId] = timeRole.getHowManyDayRemaining()
+                break
+            
+    guild : discord.Guild = bot.get_guild(server.serverId)
+    for memberDiscord in guild.members:
+        if role in memberDiscord.roles:
+            if isTimedRoleGlobal:
+                globalTimedRole = server.globalTimeRoles[positionGlobalTimedRole].getRemainingDays()
+                if memberDiscord.id not in memberDays or globalTimedRole < memberDays[member.memberId]:
+                    memberDays[memberDiscord.id] = globalTimedRole
+            else:
+                memberNoTimedRole.append(memberDiscord)
+                
+    memberDays = {k: v for k, v in sorted(memberDays.items(), key=lambda item: item[1])} # Sort with expiration days 
+    for memberId, numberDays in memberDays.items():
+        discord_member = guild.get_member(memberId)
+        description += "{} with {} days left \n".format(discord_member.mention, numberDays)
     if description == "":
         description = "Nobody have this timed role"
     embed = discord.Embed(
-        title="Role: {}".format(role.name),
+        title="Has the timed role {}".format(role.name),
         description=description
     )
-    embed.set_footer(text="Warning: This command only display individual timed role, NOT global roles (for now)")
+    
+    description=""
+    i = 1
+    for discordMember in memberNoTimedRole:
+        description += "{}) {} \n".format(i, discordMember.mention)
+        i += 1
+    if description == "":
+        description = "Nobody have this timed role"
+    embedNoTimedRole = discord.Embed(
+        title="Has the role, but not a timed role for these members".format(role.name),
+        description=description
+    )
     await ctx.send(embed=embed)
+    if len(memberNoTimedRole) != 0:
+        await ctx.send(embed=embedNoTimedRole)
     
 @bot.command(pass_context = True , aliases=["matr"])
 async def manualAddTimedRole(ctx, memberDiscord: discord.Member, role: discord.Role, numberOfDay: int):

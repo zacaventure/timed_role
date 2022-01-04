@@ -9,6 +9,10 @@ class GlobalTimedRole:
         now = datetime.datetime.now()
         return now >= self.endDate
     
+    def getRemainingDays(self) -> int:
+        now = datetime.datetime.now()
+        return round((self.endDate-now).total_seconds()/86400, 2)
+    
     def __eq__(self, other):
         return self.roleId == other.roleId and self.endDate == other.endDate
 
