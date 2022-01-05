@@ -28,7 +28,7 @@ intents = discord.Intents.default()
 intents.members = True
 bot = commands.Bot(command_prefix="%", intents = intents)
 data = Data()
-timeChecker = RoleTimeOutChecker(data, bot)
+timeChecker = RoleTimeOutChecker(data, bot, logger)
 
 @bot.event
 async def on_ready():
@@ -260,4 +260,4 @@ async def on_member_update(before, after):
             del member.timedRole[i]
             data.saveData()
 
-bot.run(os.getenv('TOKEN'))
+bot.run(os.getenv("TOKEN"))

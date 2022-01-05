@@ -1,3 +1,5 @@
+from logging import Logger
+import logging
 import discord
 from discord.ext import commands, tasks
 from discord.ext.commands.bot import Bot
@@ -7,9 +9,10 @@ from data_structure.Server import Server
 
 
 class RoleTimeOutChecker(commands.Cog):
-    def __init__(self, data: Data, bot: Bot):
+    def __init__(self, data: Data, bot: Bot, logger: Logger):
         self.data = data
         self.bot = bot
+        self.logger = logger
         self.timeChecker.start()
 
     def cog_unload(self):
@@ -58,4 +61,7 @@ class RoleTimeOutChecker(commands.Cog):
         if member is not None:   
             role_get = get(guild.roles, id=roleId)
             if role_get in member.roles:
-                await member.remove_roles(role_get, reason = "Your role as expired")
+                try:
+                    await member.remove_roles(role_get, reason = "Your role has expired")
+                except Exception as error:
+                    self.logger.log(logging.ERROR, error)
