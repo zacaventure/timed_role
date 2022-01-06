@@ -29,8 +29,6 @@ bot = discord.Bot(intents=intents)
 data = Data()
 timeChecker = RoleTimeOutChecker(data, bot, logger)
 
-bot2: discord.Bot = discord.Bot()
-
 guildIds = []
 for guild in data.servers:
     guildIds.append(guild.serverId)
@@ -71,7 +69,7 @@ async def show_timed_role_of_server(ctx):
     embed2 = discord.Embed(title="Global timed role of your server", description=value)
     embed2.set_footer(text="Note: Global roles expire for everyone in the server at the same time !")
     await ctx.respond(embed=embed)
-    await ctx.send(embed=embed2)
+    await ctx.respond(embed=embed2)
     
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Show all the individual and global timed role of a member")
 async def show_timed_role_of_member(ctx, member: discord.Member):
@@ -103,7 +101,7 @@ async def show_timed_role_of_member(ctx, member: discord.Member):
         value = "No global timed role for {}".format(member.name) 
     embed2 = discord.Embed(title="Global timed role of {}".format(member.name), description=value)
     await ctx.respond(embed=embed)
-    await ctx.send(embed=embed2)
+    await ctx.respond(embed=embed2)
     
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Show all the user of a timed role. Show the members who have the role, without having a timed role")
 async def show_timed_role_users(ctx, role: discord.Role):
@@ -159,7 +157,7 @@ async def show_timed_role_users(ctx, role: discord.Role):
     )
     await ctx.respond(embed=embed)
     if len(memberNoTimedRole) != 0:
-        await ctx.send(embed=embedNoTimedRole)
+        await ctx.respond(embed=embedNoTimedRole)
 
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Add a new global time role with a expiration date.")    
 async def add_global_timed_role(ctx, role: discord.Role, year: int, month: int, day: int, hour : int = 0, minute: int = 0):

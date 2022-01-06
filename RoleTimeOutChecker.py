@@ -2,14 +2,13 @@ from logging import Logger
 import logging
 import discord
 from discord.ext import commands, tasks
-from discord.ext.commands.bot import Bot
 from discord.utils import get
 from data import Data
 from data_structure.Server import Server
 
 
 class RoleTimeOutChecker(commands.Cog):
-    def __init__(self, data: Data, bot: Bot, logger: Logger):
+    def __init__(self, data: Data, bot: discord.Bot, logger: Logger):
         self.data = data
         self.bot = bot
         self.logger = logger
