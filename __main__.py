@@ -34,7 +34,7 @@ data = Data()
 timeChecker = RoleTimeOutChecker(data, bot, logger)
 
 guildIds = [833210288681517126]
-# guildIds = None # force global commands
+guildIds = None # force global commands
 
 @bot.event
 async def on_ready():
