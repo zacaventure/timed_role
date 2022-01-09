@@ -1,6 +1,8 @@
 import datetime
 import discord
 import os
+from discord import role
+from discord.ext.commands.errors import MissingPermissions
 from dotenv import load_dotenv
 from RoleTimeOutChecker import RoleTimeOutChecker
 from discord.utils import get
@@ -9,6 +11,8 @@ from data_structure.GlobalTimeRole import GlobalTimedRole
 from data_structure.TimedRole import TimedRole
 from data_structure.Server import Server
 import logging
+from discord.ext.commands import has_permissions
+
 
 # load .env variables
 load_dotenv()
@@ -29,17 +33,15 @@ bot = discord.Bot(intents=intents)
 data = Data()
 timeChecker = RoleTimeOutChecker(data, bot, logger)
 
-guildIds = []
-for guild in data.servers:
-    guildIds.append(guild.serverId)
-guildIds = None # force global commands
+guildIds = [833210288681517126]
+# guildIds = None # force global commands
 
 @bot.event
 async def on_ready():
     print('We have logged in as {0.user}'.format(bot))
 
 
-@bot.slash_command(guild_ids=guildIds, pass_context = True, description="Show all the individual and global timed role of your server")
+@bot.slash_command(guild_ids=guildIds, pass_context = True, description="Show all the individual and global timed role of your server", default_permission=True)
 async def show_timed_role_of_server(ctx):
     server = data.getServer(ctx.guild.id)
     embed = discord.Embed()
@@ -160,6 +162,7 @@ async def show_timed_role_users(ctx, role: discord.Role):
         await ctx.respond(embed=embedNoTimedRole)
 
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Add a new global time role with a expiration date.")    
+@has_permissions(manage_roles=True)
 async def add_global_timed_role(ctx, role: discord.Role, year: int, month: int, day: int, hour : int = 0, minute: int = 0):
     server = data.getServer(ctx.guild.id)
     for globalTimeRole in server.globalTimeRoles:
@@ -173,6 +176,7 @@ async def add_global_timed_role(ctx, role: discord.Role, year: int, month: int, 
     await ctx.respond("The global role was added to the global timed role of the server")
     
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Remove a global role from the server")    
+@has_permissions(manage_roles=True)
 async def remove_global_timed_role(ctx, role: discord.Role):
     server = data.getServer(ctx.guild.id)
     i = 0
@@ -190,6 +194,7 @@ async def remove_global_timed_role(ctx, role: discord.Role):
         await ctx.respond("This global time Role do not exist. run /show_timed_role_of_server to check what global timed role you have")
     
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Add a server timed role.Users getting that role will get a timed role")    
+@has_permissions(manage_roles=True)
 async def add_timed_role_to_server(ctx, role: discord.Role, number_of_days_given_to_member: int):
     server = data.getServer(ctx.guild.id)
     server.timedRoleOfServer[role.id] = number_of_days_given_to_member
@@ -197,6 +202,7 @@ async def add_timed_role_to_server(ctx, role: discord.Role, number_of_days_given
     await ctx.respond("The role was added to the timed role of the server with a {} days expiration".format(number_of_days_given_to_member))
    
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Remove a timed role of your server")     
+@has_permissions(manage_roles=True)
 async def remove_timed_role_from_server(ctx, role: discord.Role):
     server = data.getServer(ctx.guild.id)
     if role.id in server.timedRoleOfServer:
@@ -207,6 +213,7 @@ async def remove_timed_role_from_server(ctx, role: discord.Role):
         await ctx.respond("The role is not a timed role of the server !")
      
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Manually add a timed role to a user")            
+@has_permissions(manage_roles=True)
 async def add_timed_role_to_user(ctx, member: discord.Member, role: discord.Role, number_of_days_to_keep_role: int):
     memberData = data.getMember(member.guild.id, member.id)
     roleIn = False
@@ -222,6 +229,7 @@ async def add_timed_role_to_user(ctx, member: discord.Member, role: discord.Role
     await ctx.respond("Custom role delivered !")
     
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Remove a timed role from a user (not global tr)")      
+@has_permissions(manage_roles=True)
 async def remove_timed_role_from_user(ctx, member: discord.Member, role: discord.Role):
     memberData = data.getMember(member.guild.id, member.id)
     i = 0
@@ -237,11 +245,11 @@ async def remove_timed_role_from_user(ctx, member: discord.Member, role: discord
     await member.remove_roles(role)
     await ctx.respond("Custom role remove !")
       
-@bot.slash_command(guild_ids=guildIds, pass_context = True, description="Show help window")      
+@bot.slash_command(guild_ids=guildIds, pass_context = True, description="Show help window")
 async def help(ctx):
     embed = discord.Embed()
-    embed.add_field(name="Global roles", value="Add a new global timed role for the server \n*/add_global_timed_role \<role\> \<year\> \<month\> \<day\> \[hour=0\] \[minute=0\]*\n\nRemove a global timed role for the server\n*/remove_global_timed_role \<role\>*", inline=False)
-    embed.add_field(name="Individual Roles", value="Add a new timed role for the server\n*/add_timed_role_to_server \<role\> \<numberOfDayUntilExpire\>*\n\nRemove a timed role for the server\n*/remove_timed_role_from_server \<role\>*\n\nManually add a timed role to a member\n*/add_timed_role_to_user \<member\> \<role\> \<numberOfDayUntilExpire\>*\n\nManually remove a timed role to a member\n*/remove_timed_role_from_user \<member\> \<role\>*", inline=True)
+    embed.add_field(name="Global roles (need manage_role)", value="Add a new global timed role for the server \n*/add_global_timed_role \<role\> \<year\> \<month\> \<day\> \[hour=0\] \[minute=0\]*\n\nRemove a global timed role for the server\n*/remove_global_timed_role \<role\>*", inline=False)
+    embed.add_field(name="Individual Roles (need manage_role)", value="Add a new timed role for the server\n*/add_timed_role_to_server \<role\> \<numberOfDayUntilExpire\>*\n\nRemove a timed role for the server\n*/remove_timed_role_from_server \<role\>*\n\nManually add a timed role to a member\n*/add_timed_role_to_user \<member\> \<role\> \<numberOfDayUntilExpire\>*\n\nManually remove a timed role to a member\n*/remove_timed_role_from_user \<member\> \<role\>*", inline=True)
     embed.add_field(name="Get information", value="Show all timed role of the server\n*/show_timed_role_of_server*\n\nShow all member of a timed role\n*/show_timed_role_of_member <role>*\n\nGet all timed role of a user\n*/show_timed_role_users <member>*")
     await ctx.respond(embed=embed)
 
@@ -263,5 +271,34 @@ async def on_member_update(before, after):
         if isIn:
             del member.timedRole[i]
             data.saveData()
-
+    
+@add_global_timed_role.error
+async def add_global_timed_role_error(ctx, error):
+    await handleErrorGlobal(ctx, error)
+    
+@remove_global_timed_role.error
+async def remove_global_timed_role_error(ctx, error):
+    await handleErrorGlobal(ctx, error)
+    
+@add_timed_role_to_server.error
+async def add_timed_role_to_server_error(ctx, error):
+    await handleErrorGlobal(ctx, error)
+    
+@remove_timed_role_from_server.error
+async def remove_timed_role_from_server_error(ctx, error):
+    await handleErrorGlobal(ctx, error)
+    
+@add_timed_role_to_user.error
+async def add_timed_role_to_user_error(ctx, error):
+    await handleErrorGlobal(ctx, error)
+        
+@remove_timed_role_from_user.error
+async def remove_timed_role_from_user_error(ctx, error):
+    await handleErrorGlobal(ctx, error)
+    
+async def handleErrorGlobal(ctx, error):
+    if isinstance(error, MissingPermissions):
+        text = "Sorry {}, you do not have permissions to do that! You need to have manage_role permission".format(ctx.author.name)
+        await ctx.respond(text)
+        
 bot.run(os.getenv("TOKEN"))
