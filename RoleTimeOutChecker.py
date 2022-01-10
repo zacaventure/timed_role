@@ -45,7 +45,7 @@ class RoleTimeOutChecker(commands.Cog):
         change=False
         globalTimedRoleToRemove = []
         for globalTimedRole in server.globalTimeRoles:
-            if globalTimedRole.isExpire():
+            if globalTimedRole.isExpire(server.timezone):
                 globalTimedRoleToRemove.append(globalTimedRole)
                 for memberDiscord in guild.members:
                     await self.removeRoleToMember(guild, memberDiscord.id, globalTimedRole.roleId)

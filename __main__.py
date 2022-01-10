@@ -1,7 +1,7 @@
 import datetime
 import discord
 import os
-from discord import role
+import pytz
 from discord.ext.commands.errors import MissingPermissions
 from dotenv import load_dotenv
 from RoleTimeOutChecker import RoleTimeOutChecker
@@ -33,7 +33,7 @@ bot = discord.Bot(intents=intents)
 data = Data()
 timeChecker = RoleTimeOutChecker(data, bot, logger)
 
-guildIds = [833210288681517126]
+guildIds = [833210288681517126] # test discord server
 guildIds = None # force global commands
 
 @bot.event
@@ -64,7 +64,7 @@ async def show_timed_role_of_server(ctx):
     for timeRole in server.globalTimeRoles:
         role_get = get(ctx.guild.roles, id=timeRole.roleId)
         if role_get is not None:
-            value += "{}) {} expire on {} \n".format(1, role_get.mention, timeRole.endDate)
+            value += "{}) {} expire on {} \n".format(1, role_get.mention, timeRole.printEndDate())
             i += 1
     if value == "":
         value = "No global timed role for your server" 
@@ -97,7 +97,7 @@ async def show_timed_role_of_member(ctx, member: discord.Member):
     for timeRole in server.globalTimeRoles:
         role_get = get(ctx.guild.roles, id=timeRole.roleId)
         if role_get in member.roles and role_get is not None:
-            value += "{}) {} that expire for everyone on {} \n".format(i, role_get.mention, timeRole.endDate)
+            value += "{}) {} that expire for everyone on {} \n".format(i, role_get.mention, timeRole.printEndDate())
         i += 1
     if value == "":
         value = "No global timed role for {}".format(member.name) 
@@ -131,9 +131,10 @@ async def show_timed_role_users(ctx, role: discord.Role):
     for memberDiscord in guild.members:
         if role in memberDiscord.roles:
             if isTimedRoleGlobal:
-                globalTimedRole = server.globalTimeRoles[positionGlobalTimedRole].getRemainingDays()
-                if memberDiscord.id not in memberDays or globalTimedRole < memberDays[member.memberId]:
+                globalTimedRole = server.globalTimeRoles[positionGlobalTimedRole].getRemainingDays(server.timezone)
+                if memberDiscord.id not in memberDays or globalTimedRole < memberDays[memberDiscord.id]:
                     memberDays[memberDiscord.id] = globalTimedRole
+                    
             elif not isTimedRoleGlobal and memberDiscord.id not in memberDays:
                 memberNoTimedRole.append(memberDiscord)
                 
@@ -167,11 +168,11 @@ async def add_global_timed_role(ctx, role: discord.Role, year: int, month: int, 
     server = data.getServer(ctx.guild.id)
     for globalTimeRole in server.globalTimeRoles:
         if globalTimeRole.roleId == role.id:
-            globalTimeRole.endDate = datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute)
+            globalTimeRole.endDate = datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute, tzinfo=server.timezone)
             await ctx.respond("The global role already exist... updating end date")
             return
         
-    server.globalTimeRoles.append(GlobalTimedRole(role.id, datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute)))
+    server.globalTimeRoles.append(GlobalTimedRole(role.id, datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute, tzinfo=server.timezone)))
     data.saveData()
     await ctx.respond("The global role was added to the global timed role of the server")
     
@@ -248,10 +249,28 @@ async def remove_timed_role_from_user(ctx, member: discord.Member, role: discord
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Show help window")
 async def help(ctx):
     embed = discord.Embed()
-    embed.add_field(name="Global roles (need manage_role)", value="Add a new global timed role for the server \n*/add_global_timed_role \<role\> \<year\> \<month\> \<day\> \[hour=0\] \[minute=0\]*\n\nRemove a global timed role for the server\n*/remove_global_timed_role \<role\>*", inline=False)
-    embed.add_field(name="Individual Roles (need manage_role)", value="Add a new timed role for the server\n*/add_timed_role_to_server \<role\> \<numberOfDayUntilExpire\>*\n\nRemove a timed role for the server\n*/remove_timed_role_from_server \<role\>*\n\nManually add a timed role to a member\n*/add_timed_role_to_user \<member\> \<role\> \<numberOfDayUntilExpire\>*\n\nManually remove a timed role to a member\n*/remove_timed_role_from_user \<member\> \<role\>*", inline=True)
-    embed.add_field(name="Get information", value="Show all timed role of the server\n*/show_timed_role_of_server*\n\nShow all member of a timed role\n*/show_timed_role_of_member <role>*\n\nGet all timed role of a user\n*/show_timed_role_users <member>*")
+    embed.add_field(name="Global roles (need manage_role)", value="Add a new global timed role for the server \n*/add_global_timed_role \<role\> \<year\> \<month\> \<day\> \[hour=0\] \[minute=0\]*\n\nRemove a global timed role for the server\n*/remove_global_timed_role \<role\>*", inline=True)
+    embed.add_field(name="Individual Roles (need manage_role)", value="Add a new timed role for the server\n*/add_timed_role_to_server \<role\> \<numberOfDayUntilExpire\>*\n\nRemove a timed role for the server\n*/remove_timed_role_from_server \<role\>*\n\nManually add a timed role to a member\n*/add_timed_role_to_user \<member\> \<role\> \<numberOfDayUntilExpire\>*\n\nManually remove a timed role to a member\n*/remove_timed_role_from_user \<member\> \<role\>*", inline=False)
+    embed.add_field(name="Get information", value="Show all timed role of the server\n*/show_timed_role_of_server*\n\nShow all member of a timed role\n*/show_timed_role_of_member <role>*\n\nGet all timed role of a user\n*/show_timed_role_users <member>*", inline=True)
+    embed.add_field(name="Timezones", value="Show the timezone of your server\n*/show_timezone*\n\nSet the timezone of your server\n*/set_timezone <role>* find the available timezone at https://gist.github.com/heyalexej/8bf688fd67d7199be4a1682b3eec7568", inline=True)
+
     await ctx.respond(embed=embed)
+    
+@bot.slash_command(guild_ids=guildIds, pass_context = True, description="Update the timezone of the server")
+@has_permissions(manage_roles=True)
+async def set_timezone(ctx, timezone: str):
+    if timezone not in pytz.all_timezones:
+        await ctx.respond("Invalid timezone, check all available timezone here : {}".format("https://gist.github.com/heyalexej/8bf688fd67d7199be4a1682b3eec7568"))
+    else:
+        server = data.getServer(ctx.guild.id)
+        server.timezone = pytz.timezone(timezone)
+        data.saveData()
+        await ctx.respond("The timezone for your server have been updated !")
+        
+@bot.slash_command(guild_ids=guildIds, pass_context = True, description="Show the timezone of the server")
+async def show_timezone(ctx):
+    server = data.getServer(ctx.guild.id)
+    await ctx.respond("The timezone for your server is {} and it is currently {} !".format(server.timezone, datetime.datetime.now(tz=server.timezone).strftime("%Y-%m-%d at %H:%M:%S")))
 
 @bot.event
 async def on_member_update(before, after):
@@ -294,6 +313,10 @@ async def add_timed_role_to_user_error(ctx, error):
         
 @remove_timed_role_from_user.error
 async def remove_timed_role_from_user_error(ctx, error):
+    await handleErrorGlobal(ctx, error)
+    
+@set_timezone.error
+async def set_timezone_error(ctx, error):
     await handleErrorGlobal(ctx, error)
     
 async def handleErrorGlobal(ctx, error):
