@@ -270,7 +270,10 @@ async def set_timezone(ctx, timezone: str):
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Show the timezone of the server")
 async def show_timezone(ctx):
     server = data.getServer(ctx.guild.id)
-    await ctx.respond("The timezone for your server is {} and it is currently {} !".format(server.timezone, datetime.datetime.now(tz=server.timezone).strftime("%Y-%m-%d at %H:%M:%S")))
+    if server.timezone is None:
+        await ctx.respond("You did not set a timezone yet ! use /set_timezone <timezone> to set one")
+    else:
+        await ctx.respond("The timezone for your server is {} and it is currently {} !".format(server.timezone, datetime.datetime.now(tz=server.timezone).strftime("%Y-%m-%d at %H:%M:%S")))
 
 @bot.event
 async def on_member_update(before, after):
