@@ -64,7 +64,7 @@ async def show_timed_role_of_server(ctx):
     for timeRole in server.globalTimeRoles:
         role_get = get(ctx.guild.roles, id=timeRole.roleId)
         if role_get is not None:
-            value += "{}) {} expire on {} \n".format(1, role_get.mention, timeRole.printEndDate())
+            value += "{}) {} expire on {} \n".format(i, role_get.mention, timeRole.printEndDate())
             i += 1
     if value == "":
         value = "No global timed role for your server" 
