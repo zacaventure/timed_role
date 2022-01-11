@@ -172,7 +172,7 @@ async def show_timed_role_users(ctx, role: discord.Role):
 @has_permissions(manage_roles=True)
 async def add_global_timed_role(ctx, role: discord.Role, year: int, month: int, day: int, hour : int = 0, minute: int = 0):
     if not canTheBotHandleTheRole(ctx, role):
-        await ctx.respond("That role {} is highter than the hightest role of the bot timed_role. The bot cannot manipulate that role. Please change the role order if you want to create a timed role".format(role.mention))
+        await ctx.respond("That role {} is higher than the highest role of the bot timed_role. The bot cannot manipulate that role. Please change the role order if you want to create a timed role".format(role.mention))
         return
     server = data.getServer(ctx.guild.id)
     for globalTimeRole in server.globalTimeRoles:
@@ -207,7 +207,7 @@ async def remove_global_timed_role(ctx, role: discord.Role):
 @has_permissions(manage_roles=True)
 async def add_timed_role_to_server(ctx, role: discord.Role, number_of_days_given_to_member: int):
     if not canTheBotHandleTheRole(ctx, role):
-        await ctx.respond("That role {} is highter than the hightest role of the bot timed_role. The bot cannot manipulate that role. Please change the role order if you want to create a timed role".format(role.mention))
+        await ctx.respond("That role {} is higher than the highest role of the bot timed_role. The bot cannot manipulate that role. Please change the role order if you want to create a timed role".format(role.mention))
         return
     server = data.getServer(ctx.guild.id)
     server.timedRoleOfServer[role.id] = number_of_days_given_to_member
@@ -229,7 +229,7 @@ async def remove_timed_role_from_server(ctx, role: discord.Role):
 @has_permissions(manage_roles=True)
 async def add_timed_role_to_user(ctx, member: discord.Member, role: discord.Role, number_of_days_to_keep_role: int):
     if not canTheBotHandleTheRole(ctx, role):
-        await ctx.respond("That role {} is highter than the hightest role of the bot timed_role. The bot cannot manipulate that role. Please change the role order if you want to create a timed role".format(role.mention))
+        await ctx.respond("That role {} is higher than the highest role of the bot timed_role. The bot cannot manipulate that role. Please change the role order if you want to create a timed role".format(role.mention))
         return
     memberData = data.getMember(member.guild.id, member.id)
     roleIn = False
