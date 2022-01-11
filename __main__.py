@@ -39,7 +39,13 @@ guildIds = None # force global commands
 @bot.event
 async def on_ready():
     print('We have logged in as {0.user}'.format(bot))
+    
 
+def canTheBotHandleTheRole(ctx, role: discord.Role) -> bool:
+    myBot: discord.Member = ctx.guild.get_member(bot.user.id)
+    if myBot.top_role.position > role.position:
+        return True
+    return False
 
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Show all the individual and global timed role of your server", default_permission=True)
 async def show_timed_role_of_server(ctx):
@@ -165,6 +171,9 @@ async def show_timed_role_users(ctx, role: discord.Role):
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Add a new global time role with a expiration date.")    
 @has_permissions(manage_roles=True)
 async def add_global_timed_role(ctx, role: discord.Role, year: int, month: int, day: int, hour : int = 0, minute: int = 0):
+    if not canTheBotHandleTheRole(ctx, role):
+        await ctx.respond("That role {} is highter than the hightest role of the bot timed_role. The bot cannot manipulate that role. Please change the role order if you want to create a timed role".format(role.mention))
+        return
     server = data.getServer(ctx.guild.id)
     for globalTimeRole in server.globalTimeRoles:
         if globalTimeRole.roleId == role.id:
@@ -197,6 +206,9 @@ async def remove_global_timed_role(ctx, role: discord.Role):
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Add a server timed role.Users getting that role will get a timed role")    
 @has_permissions(manage_roles=True)
 async def add_timed_role_to_server(ctx, role: discord.Role, number_of_days_given_to_member: int):
+    if not canTheBotHandleTheRole(ctx, role):
+        await ctx.respond("That role {} is highter than the hightest role of the bot timed_role. The bot cannot manipulate that role. Please change the role order if you want to create a timed role".format(role.mention))
+        return
     server = data.getServer(ctx.guild.id)
     server.timedRoleOfServer[role.id] = number_of_days_given_to_member
     data.saveData()
@@ -216,6 +228,9 @@ async def remove_timed_role_from_server(ctx, role: discord.Role):
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Manually add a timed role to a user")            
 @has_permissions(manage_roles=True)
 async def add_timed_role_to_user(ctx, member: discord.Member, role: discord.Role, number_of_days_to_keep_role: int):
+    if not canTheBotHandleTheRole(ctx, role):
+        await ctx.respond("That role {} is highter than the hightest role of the bot timed_role. The bot cannot manipulate that role. Please change the role order if you want to create a timed role".format(role.mention))
+        return
     memberData = data.getMember(member.guild.id, member.id)
     roleIn = False
     for timeRole in memberData.timedRole:
