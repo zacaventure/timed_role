@@ -1,5 +1,6 @@
 from logging import Logger
 import logging
+import os
 import discord
 from discord.ext import commands, tasks
 from discord.utils import get
@@ -8,10 +9,15 @@ from data_structure.Server import Server
 
 
 class RoleTimeOutChecker(commands.Cog):
-    def __init__(self, data: Data, bot: discord.Bot, logger: Logger):
+    def __init__(self, data: Data, bot: discord.Bot):
         self.data = data
         self.bot = bot
-        self.logger = logger
+        self.logger = logging.getLogger("discord_time_checker")
+        self.logger.setLevel(logging.ERROR)
+        file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "logs", "time_checker.log")
+        handler = logging.FileHandler(filename=file, encoding="utf-8", mode="w")
+        handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+        self.logger.addHandler(handler)
         self.timeChecker.start()
 
     def cog_unload(self):
@@ -19,13 +25,16 @@ class RoleTimeOutChecker(commands.Cog):
 
     @tasks.loop(seconds=60)
     async def timeChecker(self):
-        change = False
-        for server in self.data.servers:
-            guild = self.bot.get_guild(server.serverId)
-            if guild is not None:
-                change = await self.handleIndividualTimedRole(server, guild) or await self.handleGlobalTimedRole(server, guild)  
-        if change:
-            self.data.saveData()
+        try:
+            change = False
+            for server in self.data.servers:
+                guild = self.bot.get_guild(server.serverId)
+                if guild is not None:
+                    change = await self.handleIndividualTimedRole(server, guild) or await self.handleGlobalTimedRole(server, guild)  
+            if change:
+                self.data.saveData()
+        except Exception as error:
+            self.logger.log(logging.ERROR, "Exception while running time checker. Excepton {}".format(error))
             
     async def handleIndividualTimedRole(self, server: Server, guild : discord.guild):
         change=False
@@ -63,4 +72,4 @@ class RoleTimeOutChecker(commands.Cog):
                 try:
                     await member.remove_roles(role_get, reason = "Your role has expired")
                 except Exception as error:
-                    self.logger.log(logging.ERROR, error)
+                    self.logger.log(logging.ERROR, "Unable to remove role in guild : {} Excepton {}".format(guild, error))

@@ -18,27 +18,34 @@ from discord.ext.commands import has_permissions
 load_dotenv()
 
 #logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("discord")
+logger = logging.getLogger("discord_commands")
 logger.setLevel(logging.ERROR)
-file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "timed_bot.log")
+file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "logs", "commands.log")
 handler = logging.FileHandler(filename=file, encoding="utf-8", mode="w")
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)
+
+loggerStart = logging.getLogger("discord_start")
+loggerStart.setLevel(logging.INFO)
+file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "logs", "start.log")
+handler = logging.FileHandler(filename=file, encoding="utf-8", mode="w")
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+loggerStart.addHandler(handler)
 
 
 intents = discord.Intents.default()
 intents.members = True
 bot = discord.Bot(intents=intents)
 data = Data()
-timeChecker = RoleTimeOutChecker(data, bot, logger)
+timeChecker = RoleTimeOutChecker(data, bot)
 
 guildIds = [833210288681517126] # test discord server
 guildIds = None # force global commands
 
 @bot.event
 async def on_ready():
-    print('We have logged in as {0.user}'.format(bot))
+    print("We have logged in as {0.user}".format(bot))
+    loggerStart.log(logging.INFO, "Bot in {} guilds. Guilds: {}".format(len(bot.guilds), bot.guilds))
     
 
 def canTheBotHandleTheRole(ctx, role: discord.Role) -> bool:
@@ -308,6 +315,18 @@ async def on_member_update(before, after):
         if isIn:
             del member.timedRole[i]
             data.saveData()
+            
+@show_timed_role_of_server.error
+async def show_timed_role_of_server_error(ctx, error):
+    await handleErrorGlobal(ctx, error)
+
+@show_timed_role_of_member.error
+async def show_timed_role_of_member_error(ctx, error):
+    await handleErrorGlobal(ctx, error)
+
+@show_timed_role_users.error
+async def show_timed_role_users_error(ctx, error):
+    await handleErrorGlobal(ctx, error)
     
 @add_global_timed_role.error
 async def add_global_timed_role_error(ctx, error):
@@ -333,6 +352,10 @@ async def add_timed_role_to_user_error(ctx, error):
 async def remove_timed_role_from_user_error(ctx, error):
     await handleErrorGlobal(ctx, error)
     
+@show_timezone.error
+async def show_timezone_error(ctx, error):
+    await handleErrorGlobal(ctx, error)
+    
 @set_timezone.error
 async def set_timezone_error(ctx, error):
     await handleErrorGlobal(ctx, error)
@@ -341,5 +364,7 @@ async def handleErrorGlobal(ctx, error):
     if isinstance(error, MissingPermissions):
         text = "Sorry {}, you do not have permissions to do that! You need to have manage_role permission".format(ctx.author.name)
         await ctx.respond(text)
+    else:
+        logger.log(logging.ERROR, "On {} Exception: {}".format(ctx.guild, error))
         
 bot.run(os.getenv("TOKEN"))
