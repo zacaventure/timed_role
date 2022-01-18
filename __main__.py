@@ -43,6 +43,14 @@ guildIds = [833210288681517126] # test discord server
 guildIds = None # force global commands
 
 @bot.event
+async def on_guild_join(guild: discord.Guild):
+    loggerStart.log(logging.INFO, "Bot just joined {}. The bot is not in {} guilds. Guilds: {}".format(guild.name, len(bot.guilds), bot.guilds))
+
+@bot.event
+async def on_guild_remove(guild: discord.Guild):
+    loggerStart.log(logging.INFO, "Bot just left {}. The bot is not in {} guilds. Guilds: {}".format(guild.name, len(bot.guilds), bot.guilds))
+
+@bot.event
 async def on_ready():
     print("We have logged in as {0.user}".format(bot))
     loggerStart.log(logging.INFO, "Bot in {} guilds. Guilds: {}".format(len(bot.guilds), bot.guilds))
@@ -51,7 +59,7 @@ async def on_ready():
         for guild in bot.guilds:
             server: Server = data.getServer(guild.id)
             for memberDiscord in guild.members:
-                member = data.getMember(guild.id, memberDiscord.id)
+                member = data.getMember(guild.id, memberDiscord.id, server=server)
                 for timedRoleId, numberOfDays in server.timedRoleOfServer.items():
                     role_get = get(guild.roles, id=timedRoleId)
                     if role_get is not None:
@@ -129,7 +137,7 @@ async def show_timed_role_of_member(ctx, member: discord.Member):
     
     value=""
     i = 1
-    memberData = data.getMember(ctx.guild.id, member.id)
+    memberData = data.getMember(ctx.guild.id, member.id, server=server)
     memberData.timedRole.sort()
     for timeRole in memberData.timedRole:
         role_get = get(ctx.guild.roles, id=timeRole.roleId)
@@ -254,6 +262,9 @@ async def add_timed_role_to_server(ctx, role: discord.Role, number_of_days_given
         return
     server = data.getServer(ctx.guild.id)
     server.timedRoleOfServer[role.id] = number_of_days_given_to_member
+    for memberDiscord in ctx.guild.members:
+        if role in memberDiscord.roles:
+            data.addTimedRole(ctx.guild.id, memberDiscord.id, role.id, saveData=False, server=server)
     data.saveData()
     await ctx.respond("The role was added to the timed role of the server with a {} days expiration".format(number_of_days_given_to_member))
    
@@ -263,8 +274,14 @@ async def remove_timed_role_from_server(ctx, role: discord.Role):
     server = data.getServer(ctx.guild.id)
     if role.id in server.timedRoleOfServer:
         del server.timedRoleOfServer[role.id]
+        for member in server.members:
+            pos = 0
+            for timedRole in member.timedRole:
+                if timedRole.roleId == role.id:
+                    del member.timedRole[pos]
+                pos += 1             
         data.saveData()
-        await ctx.respond("The role was removed !")
+        await ctx.respond("The role was removed from the server !")
     else:
         await ctx.respond("The role is not a timed role of the server !")
      
@@ -276,16 +293,24 @@ async def add_timed_role_to_user(ctx, member: discord.Member, role: discord.Role
         return
     memberData = data.getMember(member.guild.id, member.id)
     roleIn = False
+    pos=0
     for timeRole in memberData.timedRole:
         if timeRole.roleId == role.id:
             roleIn = True
             break
+        pos+=1
         
     if not roleIn:
         memberData.timedRole.append(TimedRole(role.id, number_of_days_to_keep_role))
+        await member.add_roles(role)
+        await ctx.respond("Custom role delivered !")
         data.saveData()
-    await member.add_roles(role)
-    await ctx.respond("Custom role delivered !")
+    else:
+        memberData.timedRole[pos].addedTime = datetime.datetime.now()
+        memberData.timedRole[pos].numberOfDaysToKeep = number_of_days_to_keep_role
+        await ctx.respond("{} already had a time role. The user now have {} left !".format(member.mention, number_of_days_to_keep_role))
+    
+    data.saveData()
     
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Remove a timed role from a user (not global tr)")      
 @has_permissions(manage_roles=True)

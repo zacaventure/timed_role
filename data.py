@@ -24,8 +24,9 @@ class Data:
         return server
             
     
-    def getMember(self, serverId:str, memberId: str) -> Member:
-        server = self.getServer(serverId)
+    def getMember(self, serverId:str, memberId: str, server=None) -> Member:
+        if server is None:
+            server = self.getServer(serverId)
         member = None
         for memberItr in server.members:
             if memberItr.memberId == memberId:
@@ -37,16 +38,19 @@ class Data:
 
         return member
     
-    def addTimedRole(self, serverId:str, userId: str, roleId : str) -> None:
-        member = self.getMember(serverId, userId)
-        server = self.getServer(serverId)
+    def addTimedRole(self, serverId:str, userId: str, roleId : str, saveData=True, server=None, member=None) -> None:
+        if server is None:
+            server = self.getServer(serverId)
+        if member is None:
+            member = self.getMember(serverId, userId, server=server)
         
         for timedRole in member.timedRole:
             if timedRole.roleId == roleId:
                 return
         if roleId in server.timedRoleOfServer:
             member.timedRole.append(TimedRole(roleId, server.timedRoleOfServer[roleId]))
-            self.saveData()
+            if saveData:
+                self.saveData()
         
     def loadData(self) -> None:
         if os.path.isfile(Data.SAVE_FILE):
