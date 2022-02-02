@@ -100,6 +100,7 @@ def canTheBotHandleTheRole(ctx, role: discord.Role) -> bool:
 
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Show all the individual and global timed role of your server", default_permission=True)
 async def show_timed_role_of_server(ctx):
+    await ctx.defer()
     server = data.getServer(ctx.guild.id)
     embed = discord.Embed()
     
@@ -132,6 +133,7 @@ async def show_timed_role_of_server(ctx):
     
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Show all the individual and global timed role of a member")
 async def show_timed_role_of_member(ctx, member: discord.Member):
+    await ctx.defer()
     server: Server = data.getServer(ctx.guild.id)
     embed = discord.Embed()
     
@@ -164,6 +166,7 @@ async def show_timed_role_of_member(ctx, member: discord.Member):
     
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Show all the user of a timed role. Show the members who have the role, without having a timed role")
 async def show_timed_role_users(ctx, role: discord.Role):
+    await ctx.defer()
     server = data.getServer(ctx.guild.id)
     guild = bot.get_guild(server.serverId)
 
@@ -222,6 +225,7 @@ async def show_timed_role_users(ctx, role: discord.Role):
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Add a new global time role with a expiration date.")    
 @has_permissions(manage_roles=True)
 async def add_global_timed_role(ctx, role: discord.Role, year: int, month: int, day: int, hour : int = 0, minute: int = 0):
+    await ctx.defer()
     if not canTheBotHandleTheRole(ctx, role):
         await ctx.respond("That role {} is higher than the highest role of the bot timed_role. The bot cannot manipulate that role. Please change the role order if you want to create a timed role".format(role.mention))
         return
@@ -239,6 +243,7 @@ async def add_global_timed_role(ctx, role: discord.Role, year: int, month: int, 
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Remove a global role from the server")    
 @has_permissions(manage_roles=True)
 async def remove_global_timed_role(ctx, role: discord.Role):
+    await ctx.defer()
     server = data.getServer(ctx.guild.id)
     i = 0
     found=False
@@ -257,6 +262,7 @@ async def remove_global_timed_role(ctx, role: discord.Role):
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Add a server timed role.Users getting that role will get a timed role")    
 @has_permissions(manage_roles=True)
 async def add_timed_role_to_server(ctx, role: discord.Role, number_of_days_given_to_member: int):
+    await ctx.defer()
     if not canTheBotHandleTheRole(ctx, role):
         await ctx.respond("That role {} is higher than the highest role of the bot timed_role. The bot cannot manipulate that role. Please change the role order if you want to create a timed role".format(role.mention))
         return
@@ -271,6 +277,7 @@ async def add_timed_role_to_server(ctx, role: discord.Role, number_of_days_given
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Remove a timed role of your server")     
 @has_permissions(manage_roles=True)
 async def remove_timed_role_from_server(ctx, role: discord.Role):
+    await ctx.defer()
     server = data.getServer(ctx.guild.id)
     if role.id in server.timedRoleOfServer:
         del server.timedRoleOfServer[role.id]
@@ -288,6 +295,7 @@ async def remove_timed_role_from_server(ctx, role: discord.Role):
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Manually add a timed role to a user")            
 @has_permissions(manage_roles=True)
 async def add_timed_role_to_user(ctx, member: discord.Member, role: discord.Role, number_of_days_to_keep_role: int):
+    await ctx.defer()
     if not canTheBotHandleTheRole(ctx, role):
         await ctx.respond("That role {} is higher than the highest role of the bot timed_role. The bot cannot manipulate that role. Please change the role order if you want to create a timed role".format(role.mention))
         return
@@ -315,6 +323,7 @@ async def add_timed_role_to_user(ctx, member: discord.Member, role: discord.Role
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Remove a timed role from a user (not global tr)")      
 @has_permissions(manage_roles=True)
 async def remove_timed_role_from_user(ctx, member: discord.Member, role: discord.Role):
+    await ctx.defer()
     memberData = data.getMember(member.guild.id, member.id)
     i = 0
     isIn = False
@@ -331,6 +340,7 @@ async def remove_timed_role_from_user(ctx, member: discord.Member, role: discord
       
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Show help window")
 async def help(ctx):
+    await ctx.defer()
     embed = discord.Embed()
     embed.add_field(name="Global roles (need manage_role)", value="Add a new global timed role for the server \n*/add_global_timed_role \<role\> \<year\> \<month\> \<day\> \[hour=0\] \[minute=0\]*\n\nRemove a global timed role for the server\n*/remove_global_timed_role \<role\>*", inline=True)
     embed.add_field(name="Individual Roles (need manage_role)", value="Add a new timed role for the server\n*/add_timed_role_to_server \<role\> \<numberOfDayUntilExpire\>*\n\nRemove a timed role for the server\n*/remove_timed_role_from_server \<role\>*\n\nManually add a timed role to a member\n*/add_timed_role_to_user \<member\> \<role\> \<numberOfDayUntilExpire\>*\n\nManually remove a timed role to a member\n*/remove_timed_role_from_user \<member\> \<role\>*", inline=False)
@@ -342,6 +352,7 @@ async def help(ctx):
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Update the timezone of the server")
 @has_permissions(manage_roles=True)
 async def set_timezone(ctx, timezone: str):
+    await ctx.defer()
     if timezone not in pytz.all_timezones:
         await ctx.respond("Invalid timezone, check all available timezone here : {}".format("https://gist.github.com/heyalexej/8bf688fd67d7199be4a1682b3eec7568"))
     else:
@@ -352,6 +363,7 @@ async def set_timezone(ctx, timezone: str):
         
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Show the timezone of the server")
 async def show_timezone(ctx):
+    await ctx.defer()
     server = data.getServer(ctx.guild.id)
     if server.timezone is None:
         await ctx.respond("You did not set a timezone yet ! use /set_timezone <timezone> to set one")
