@@ -10,10 +10,10 @@ class GlobalTimedRole:
         self.endDate = self.convertTo(self.endDate, timezone)
         return now >= self.endDate
     
-    def getRemainingDays(self, timezone) -> int:
+    def getRemainingTimeDelta(self, timezone) -> datetime.timedelta:
         now = datetime.datetime.now(tz=timezone)
         self.endDate = self.convertTo(self.endDate, timezone)
-        return round((self.endDate-now).total_seconds()/86400, 2)
+        return self.endDate-now
     
     def convertTo(self, datetime: datetime.datetime, targetTimeZone: datetime.timezone) -> datetime.datetime:
         if targetTimeZone is None or datetime.tzinfo == targetTimeZone:

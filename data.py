@@ -1,3 +1,5 @@
+import datetime
+import logging
 from data_structure.Member import Member
 from data_structure.Server import Server
 import pickle
@@ -11,6 +13,13 @@ class Data:
 
     def __init__(self) -> None:
         self.loadData()
+        self.logger = logging.getLogger("discord_data")
+        self.logger.setLevel(logging.INFO)
+        file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "logs", "data.log")
+        handler = logging.FileHandler(filename=file, encoding="utf-8", mode="w")
+        handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+        self.logger.addHandler(handler)
+        self.longestTimedelta = datetime.timedelta(days=-1)
     
     def getServer(self, serverId: str) -> Server:
         server = None
@@ -60,5 +69,10 @@ class Data:
             self.servers = []
                 
     def saveData(self) -> None:
+        start = datetime.datetime.now()
         with open(Data.SAVE_FILE,'wb') as f:
             pickle.dump(self.servers, f)
+        delta = datetime.datetime.now()-start
+        if delta > self.longestTimedelta:
+            self.logger.log(logging.INFO, "New longest write: {}".format(delta))
+            self.longestTimedelta = delta

@@ -1,4 +1,4 @@
-from logging import Logger
+import datetime
 import logging
 import os
 import discord
@@ -13,11 +13,14 @@ class RoleTimeOutChecker(commands.Cog):
         self.data = data
         self.bot = bot
         self.logger = logging.getLogger("discord_time_checker")
-        self.logger.setLevel(logging.ERROR)
+        self.logger.setLevel(logging.INFO)
         file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "logs", "time_checker.log")
         handler = logging.FileHandler(filename=file, encoding="utf-8", mode="w")
         handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
         self.logger.addHandler(handler)
+        
+        self.isLooping = False
+        self.longestTimedelta = datetime.timedelta(days=-1)
         self.timeChecker.start()
 
     def cog_unload(self):
@@ -25,16 +28,44 @@ class RoleTimeOutChecker(commands.Cog):
 
     @tasks.loop(seconds=60)
     async def timeChecker(self):
-        try:
-            change = False
-            for server in self.data.servers:
-                guild = self.bot.get_guild(server.serverId)
-                if guild is not None:
-                    change = await self.handleIndividualTimedRole(server, guild) or await self.handleGlobalTimedRole(server, guild)  
-            if change:
-                self.data.saveData()
-        except Exception as error:
-            self.logger.log(logging.ERROR, "Exception while running time checker. Excepton {}".format(error))
+        if not self.isLooping:
+            self.isLooping = True
+            start = datetime.datetime.now()
+            try:
+                change = False
+                for server in self.data.servers:
+                    guild = self.bot.get_guild(server.serverId)
+                    if guild is not None:
+                        change = await self.handleIndividualTimedRole(server, guild) or await self.handleGlobalTimedRole(server, guild)  
+                if change:
+                    self.data.saveData()
+            except Exception as error:
+                self.logger.log(logging.ERROR, "Exception while running time checker. Excepton {}".format(error))
+            delta = datetime.datetime.now()-start
+            if delta > self.longestTimedelta:
+                self.logger.log(logging.INFO, "New longest loop: {}".format(delta))
+                self.longestTimedelta = delta
+            self.isLooping = False
+    
+    async def checkEachServer(self):
+        if not self.isLooping:
+            self.isLooping = True
+            start = datetime.datetime.now()
+            try:
+                change = False
+                for server in self.data.servers:
+                    guild = self.bot.get_guild(server.serverId)
+                    if guild is not None:
+                        change = await self.handleIndividualTimedRole(server, guild) or await self.handleGlobalTimedRole(server, guild)  
+                if change:
+                    self.data.saveData()
+            except Exception as error:
+                self.logger.log(logging.ERROR, "Exception while running time checker. Excepton {}".format(error))
+            delta = datetime.datetime.now()-start
+            if delta > self.longestTimedelta:
+                self.logger.log(logging.INFO, "New longest loop: {}".format(delta))
+                self.longestTimedelta = delta
+            self.isLooping = False
             
     async def handleIndividualTimedRole(self, server: Server, guild : discord.guild):
         change=False
