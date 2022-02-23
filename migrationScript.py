@@ -1,5 +1,4 @@
 import datetime
-from secretstorage import Item
 from data import Data
 from data_structure.GlobalTimeRole import GlobalTimedRole
 from data_structure.Server import Server
