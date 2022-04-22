@@ -103,8 +103,8 @@ class RoleTimeOutChecker(commands.Cog):
                 try:
                     await member.remove_roles(role_get, reason = "Your role has expired")
                 except Exception as error:
-                    self.logger.log(logging.ERROR, "{} on member {} for role: {} in server {}"
-                                    .format(error, member, role_get, guild))
+                    self.logger.log(logging.ERROR, "{} \n On member {}  with roles {}.\n To delete role {} with id {}.\n In server {}, with roles {}"
+                                    .format(error, member, member.roles, role_get, role_get.id, guild, guild.roles))
         else:
-            self.logger.log(logging.ERROR, "ERROR on member {} for role: {} in server {}"
-                .format(error, member, role_get, guild))
+            self.logger.log(logging.ERROR, "NONE ERROR \n On member {}  with roles {}.\n To delete role {} with id {}.\n In server {}, with roles {}"
+                            .format(member, member.roles, role_get, role_get.id, guild, guild.roles))
