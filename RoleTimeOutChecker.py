@@ -11,12 +11,12 @@ from data_structure.Server import Server
 class RoleTimeOutChecker(commands.Cog):
     def __init__(self, data: Data, bot: discord.Bot):
         self.data = data
-        self.bot = bot
+        self.bot: discord.Bot = bot
         self.logger = logging.getLogger("discord_time_checker")
         self.logger.setLevel(logging.INFO)
         file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "logs", "time_checker.log")
         handler = logging.FileHandler(filename=file, encoding="utf-8", mode="w")
-        handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+        handler.setFormatter(logging.Formatter('%(asctime)s: %(message)s'))
         self.logger.addHandler(handler)
         
         self.isLooping = False
@@ -95,12 +95,16 @@ class RoleTimeOutChecker(commands.Cog):
                     change = True  
         return change
         
-    async def removeRoleToMember(self, guild: discord.guild, memberId, roleId):
-        member: discord.member = guild.get_member(memberId)
-        if member is not None:   
-            role_get = get(guild.roles, id=roleId)
+    async def removeRoleToMember(self, guild: discord.Guild, memberId, roleId):
+        member: discord.Member = guild.get_member(memberId)
+        role_get: discord.Role = guild.get_role(roleId)
+        if member is not None and role_get is not None:   
             if role_get in member.roles:
                 try:
                     await member.remove_roles(role_get, reason = "Your role has expired")
                 except Exception as error:
-                    self.logger.log(logging.ERROR, "{} on member {} for role {} in server {}".format(error, member, role_get, guild))
+                    self.logger.log(logging.ERROR, "{} on member {} for role: {} in server {}"
+                                    .format(error, member, role_get, guild))
+        else:
+            self.logger.log(logging.ERROR, "ERROR on member {} for role: {} in server {}"
+                .format(error, member, role_get, guild))
