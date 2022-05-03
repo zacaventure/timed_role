@@ -56,6 +56,11 @@ class RoleTimeOutChecker(commands.Cog):
                 change = False
                 for server in self.data.servers:
                     guild = self.bot.get_guild(server.serverId)
+                    if guild is None:
+                        try:
+                            guild = self.bot.fetch_guild(server.serverId)
+                        except Exception:
+                            guild = None
                     if guild is not None:
                         change = await self.handleIndividualTimedRole(server, guild) or await self.handleGlobalTimedRole(server, guild)  
                 if change:
