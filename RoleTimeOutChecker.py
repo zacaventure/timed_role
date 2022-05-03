@@ -98,7 +98,11 @@ class RoleTimeOutChecker(commands.Cog):
         
     async def removeRoleToMember(self, guild: discord.Guild, memberId, roleId):
         member: discord.Member = guild.get_member(memberId)
+        if member is None:
+            member: discord.Member = guild.fetch_member(memberId)
         role_get: discord.Role = guild.get_role(roleId)
+        if role_get is None:
+            role_get: discord.Role = guild._fetch_role(roleId)
         if member is not None and role_get is not None:   
             if role_get in member.roles:
                 try:
@@ -107,5 +111,9 @@ class RoleTimeOutChecker(commands.Cog):
                     self.logger.log(logging.ERROR, "{} \n On member {}  with roles {}.\n To delete role {} with id {}.\n In server {}, with roles {}"
                                     .format(error, member, member.roles, role_get, role_get.id, guild, guild.roles))
         else:
-            self.logger.log(logging.ERROR, "NONE ERROR \n On member {}  with roles {}.\n To delete role {} with id {}.\n In server {}, with roles {}"
-                            .format(member, member.roles, role_get, role_get.id, guild, guild.roles))
+            if member is None:
+                self.logger.log(logging.ERROR, "NONE Member")
+            elif role_get is None:
+                self.logger.log(logging.ERROR, "NONE role")
+            if member is None and role_get is None:
+                self.logger.log(logging.ERROR, "NONE Member and role")
