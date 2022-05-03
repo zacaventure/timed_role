@@ -5,6 +5,7 @@ import discord
 from discord.ext import commands, tasks
 from data import Data
 from data_structure.Server import Server
+import traceback
 
 
 class RoleTimeOutChecker(commands.Cog):
@@ -39,7 +40,28 @@ class RoleTimeOutChecker(commands.Cog):
                 if change:
                     self.data.saveData()
             except Exception as error:
-                self.logger.log(logging.ERROR, "Exception while running time checker:  {}".format(error.with_traceback()))
+                self.logger.log(logging.ERROR, "Exception while running time checker:  {}".format(error))
+                traceback.print_exc()
+            delta = datetime.datetime.now()-start
+            if delta > self.longestTimedelta:
+                self.logger.log(logging.INFO, "New longest loop: {}".format(delta))
+                self.longestTimedelta = delta
+            self.isLooping = False
+    
+    async def checkEachServer(self):
+        if not self.isLooping:
+            self.isLooping = True
+            start = datetime.datetime.now()
+            try:
+                change = False
+                for server in self.data.servers:
+                    guild = self.bot.get_guild(server.serverId)
+                    if guild is not None:
+                        change = await self.handleIndividualTimedRole(server, guild) or await self.handleGlobalTimedRole(server, guild)  
+                if change:
+                    self.data.saveData()
+            except Exception as error:
+                self.logger.log(logging.ERROR, "Exception while running time checker. Excepton {}".format(error))
             delta = datetime.datetime.now()-start
             if delta > self.longestTimedelta:
                 self.logger.log(logging.INFO, "New longest loop: {}".format(delta))
