@@ -1,11 +1,12 @@
 import datetime
 import logging
 import os
+import random
 import discord
 from discord.ext import commands, tasks
+from RetryInfo import RetryInfo
 from data import Data
 from data_structure.Server import Server
-import traceback
 
 
 class RoleTimeOutChecker(commands.Cog):
@@ -20,11 +21,38 @@ class RoleTimeOutChecker(commands.Cog):
         self.logger.addHandler(handler)
         
         self.isLooping = False
+        self.deleteRoleRetry = {}
+        self.MAX_NUMBER_OF_RETRY = 8
         self.longestTimedelta = datetime.timedelta(days=-1)
         self.timeChecker.start()
 
     def cog_unload(self):
         self.timeChecker.cancel()
+        
+        
+    async def retryFailConnection(self):
+        if len(self.deleteRoleRetry) != 0:
+            toRemove = []
+            for retryInfo in self.deleteRoleRetry.keys():
+                toRemove.append(retryInfo)
+            for retryInfo in toRemove:
+                await self.removeRoleToMember(retryInfo.guild, retryInfo.memberId, retryInfo.roleId)
+        
+    def handleError(self, error : Exception, guild: discord.Guild, memberId, roleId):
+        if "Cannot connect to host discord.com" in str(error):
+            retryInfo = RetryInfo(guild, memberId, roleId)
+            if retryInfo in self.deleteRoleRetry:
+                self.deleteRoleRetry[retryInfo] += 1
+                if self.deleteRoleRetry[retryInfo] > self.MAX_NUMBER_OF_RETRY:
+                    del self.deleteRoleRetry[retryInfo]
+                    self.logger.log(logging.ERROR, "{} \n On member id {} and roleid {} after {} try".format(error,
+                                                                                                             memberId, 
+                                                                                                             roleId, 
+                                                                                                             self.MAX_NUMBER_OF_RETRY))
+            else:
+                self.deleteRoleRetry[retryInfo] = 0
+            return False
+        return True
 
     @tasks.loop(seconds=60)
     async def timeChecker(self):
@@ -33,27 +61,7 @@ class RoleTimeOutChecker(commands.Cog):
             start = datetime.datetime.now()
             try:
                 change = False
-                for server in self.data.servers:
-                    guild = self.bot.get_guild(server.serverId)
-                    if guild is not None:
-                        change = await self.handleIndividualTimedRole(server, guild) or await self.handleGlobalTimedRole(server, guild)  
-                if change:
-                    self.data.saveData()
-            except Exception as error:
-                self.logger.log(logging.ERROR, "Exception while running time checker:  {}".format(error))
-                traceback.print_exc()
-            delta = datetime.datetime.now()-start
-            if delta > self.longestTimedelta:
-                self.logger.log(logging.INFO, "New longest loop: {}".format(delta))
-                self.longestTimedelta = delta
-            self.isLooping = False
-    
-    async def checkEachServer(self):
-        if not self.isLooping:
-            self.isLooping = True
-            start = datetime.datetime.now()
-            try:
-                change = False
+                change = change or await self.retryFailConnection()
                 for server in self.data.servers:
                     guild = self.bot.get_guild(server.serverId)
                     if guild is None:
@@ -63,6 +71,7 @@ class RoleTimeOutChecker(commands.Cog):
                             guild = None
                     if guild is not None:
                         change = await self.handleIndividualTimedRole(server, guild) or await self.handleGlobalTimedRole(server, guild)  
+                change = change or await self.retryFailConnection()
                 if change:
                     self.data.saveData()
             except Exception as error:
@@ -106,20 +115,26 @@ class RoleTimeOutChecker(commands.Cog):
         if member is None:
             try:
                 member: discord.Member = await guild.fetch_member(memberId)
-            except Exception:
+            except Exception as e:
                 member = None
+                self.handleError(e, guild, memberId, roleId)
         role_get: discord.Role = guild.get_role(roleId)
         if role_get is None:
             try:
                 role_get: discord.Role = await guild._fetch_role(roleId)
-            except Exception:
-               role_get = None 
+            except Exception as e2:
+                self.handleError(e2, guild, memberId, roleId)
+                role_get = None 
         if member is not None and role_get is not None:   
             if role_get in member.roles:
                 try:
                     await member.remove_roles(role_get, reason = "Your role has expired")
+                    retryInfo = RetryInfo(guild, memberId, roleId)
+                    if retryInfo in self.deleteRoleRetry:
+                        del self.deleteRoleRetry[retryInfo]
                 except Exception as error:
-                    self.logger.log(logging.ERROR, "{} \n On member {}  with roles {}.\n To delete role {} with id {}.\n In server {}, with roles {}"
+                    if self.handleError(error, guild, memberId, roleId):
+                        self.logger.log(logging.ERROR, "{} \n On member {}  with roles {}.\n To delete role {} with id {}.\n In server {}, with roles {}\n"
                                     .format(error, member, member.roles, role_get, role_get.id, guild, guild.roles))
         else:
             if member is None:

@@ -1,7 +1,6 @@
 import discord
 import os
 from discord.ext.commands.errors import MissingPermissions
-from dotenv import load_dotenv
 from MarkdownDiscord import Message
 from RoleTimeOutChecker import RoleTimeOutChecker
 from discord.utils import get
@@ -13,11 +12,8 @@ from data import Data
 from data_structure.TimedRole import TimedRole
 from data_structure.Server import Server
 import logging
-from constant import guildIds
+from constant import TOKEN, guildIds
 
-
-# load .env variables
-load_dotenv()
 
 #logging
 logger = logging.getLogger("discord_commands")
@@ -158,4 +154,4 @@ async def on_application_command_error(ctx, error: Exception):
         logger.log(logging.ERROR, "On {} Exception: {}".format(ctx.guild, error))
 
         
-bot.run(os.getenv("TOKEN"))
+bot.run(TOKEN)
