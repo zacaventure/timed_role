@@ -58,42 +58,11 @@ async def on_ready():
     print("We have logged in as {0.user}".format(bot))
     loggerStart.log(logging.INFO, "Bot in {} guilds. Guilds: {}".format(len(bot.guilds), bot.guilds))
     try:
-        saveData = False
-        saveData = saveData or checkForServerTheBotIsNoLongerIn()
-        for guild in bot.guilds:
-            server: Server = data.getServer(guild.id)
-            for memberDiscord in guild.members:
-                member = data.getMember(guild.id, memberDiscord.id, server=server)
-                for timedRoleId, timedelta in server.timedRoleOfServer.items():
-                    role_get = get(guild.roles, id=timedRoleId)
-                    if role_get is not None:
-                        if role_get in memberDiscord.roles:
-                            isIn = False
-                            for timedRoleMember in member.timedRole:
-                                if timedRoleMember.roleId == timedRoleId:
-                                    isIn=True
-                                    break
-                            if not isIn:
-                                # user got a timed role while bot down
-                                member.timedRole.append(TimedRole(timedRoleId, timedelta))
-                                saveData = True
-                        else:
-                            isIn = False
-                            pos = 0
-                            for timedRoleMember in member.timedRole:
-                                if timedRoleMember.roleId == timedRoleId:
-                                    isIn=True
-                                    break
-                                pos += 1
-                            if isIn:
-                                # user lost a timed role while bot down
-                                del member.timedRole[pos]
-                                saveData = True 
-                
-        if saveData:
+        if checkForServerTheBotIsNoLongerIn():
             data.saveData()
     except Exception as error:
         loggerStart.log(logging.ERROR, "Error while starting up. Excepton {}".format(error))
+    loggerStart.log(logging.INFO, "Setup finish")
 
 def checkForServerTheBotIsNoLongerIn():
     serversToDelete = []
