@@ -134,8 +134,8 @@ class RoleTimeOutChecker(commands.Cog):
                         del self.deleteRoleRetry[retryInfo]
                 except Exception as error:
                     if self.handleError(error, guild, memberId, roleId):
-                        self.logger.log(logging.ERROR, "{} \n On member {}  with roles {}.\n To delete role {} with id {}.\n In server {}, with roles {}\n"
-                                    .format(error, member, member.roles, role_get, role_get.id, guild, guild.roles))
+                        self.logger.exception("\n On member {}  with roles {}.\n To delete role {} with id {}.\n In server {}, with roles {}\n"
+                                    .format(member, member.roles, role_get, role_get.id, guild, guild.roles))
         else:
             if member is None:
                 self.logger.log(logging.ERROR, "NONE Member")

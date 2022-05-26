@@ -151,7 +151,7 @@ async def on_application_command_error(ctx, error: Exception):
     else:
         embed = discord.Embed(title="Unexpected error (this error will be log and look into)", description=error);
         await ctx.respond(embed=embed)
-        logger.log(logging.ERROR, "On {} Exception: {}".format(ctx.guild, error))
+        logger.exception("On {} Exception: {}".format(ctx.guild, error))
 
         
 bot.run(TOKEN)
