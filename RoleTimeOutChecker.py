@@ -1,7 +1,6 @@
 import datetime
 import logging
 import os
-import random
 import discord
 from discord.ext import commands, tasks
 from RetryInfo import RetryInfo
@@ -56,7 +55,7 @@ class RoleTimeOutChecker(commands.Cog):
             return False
         return True
 
-    @tasks.loop(seconds=15)
+    @tasks.loop(seconds=60)
     async def timeChecker(self):
         if not self.isLooping:
             self.isLooping = True
