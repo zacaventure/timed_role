@@ -24,11 +24,13 @@ class RoleTimeOutChecker(commands.Cog):
         self.deleteRoleRetry = {}
         self.MAX_NUMBER_OF_RETRY = 8
         self.longestTimedelta = datetime.timedelta(days=-1)
-        self.timeChecker.start()
 
     def cog_unload(self):
         self.timeChecker.cancel()
         
+        
+    def start(self):
+        self.timeChecker.start()
         
     async def retryFailConnection(self):
         if len(self.deleteRoleRetry) != 0:
@@ -54,7 +56,7 @@ class RoleTimeOutChecker(commands.Cog):
             return False
         return True
 
-    @tasks.loop(seconds=60)
+    @tasks.loop(seconds=15)
     async def timeChecker(self):
         if not self.isLooping:
             self.isLooping = True

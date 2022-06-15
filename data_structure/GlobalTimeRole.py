@@ -8,17 +8,22 @@ class GlobalTimedRole:
     def isExpire(self, timezone) -> bool:
         now = datetime.datetime.now(tz=timezone)
         self.endDate = self.convertTo(self.endDate, timezone)
-        return now >= self.endDate
+        return now.strftime("%Y-%m-%d %H:%M:%S") >= self.endDate.strftime("%Y-%m-%d %H:%M:%S")
     
     def getRemainingTimeDelta(self, timezone) -> datetime.timedelta:
         now = datetime.datetime.now(tz=timezone)
         self.endDate = self.convertTo(self.endDate, timezone)
         return self.endDate-now
     
-    def convertTo(self, datetime: datetime.datetime, targetTimeZone: datetime.timezone) -> datetime.datetime:
+    def convertTo(self, targetDatetime: datetime.datetime, targetTimeZone: datetime.timezone) -> datetime.datetime:
         if targetTimeZone is None or datetime.tzinfo == targetTimeZone:
-            return datetime
-        return datetime.astimezone(targetTimeZone)
+            return targetDatetime
+        return datetime.datetime(year=targetDatetime.year, month=targetDatetime.month,
+                                 day=targetDatetime.day, hour=targetDatetime.hour,
+                                 minute=targetDatetime.minute, second=targetDatetime.second,
+                                 microsecond=targetDatetime.microsecond, 
+                                 tzinfo=targetTimeZone)
+
     
     def printEndDate(self)->str:
         if self.endDate.tzinfo is not None:

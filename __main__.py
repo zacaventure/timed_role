@@ -60,9 +60,11 @@ async def on_ready():
     try:
         if checkForServerTheBotIsNoLongerIn():
             data.saveData()
+        timeChecker.start()
     except Exception as error:
         loggerStart.log(logging.ERROR, "Error while starting up. Excepton {}".format(error))
     loggerStart.log(logging.INFO, "Setup finish")
+    
 
 def checkForServerTheBotIsNoLongerIn():
     serversToDelete = []

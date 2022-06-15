@@ -24,7 +24,7 @@ class TimezoneCog(commands.Cog):
             server = self.data.getServer(ctx.guild.id)
             server.timezone = pytz.timezone(timezone)
             self.data.saveData()
-            await ctx.respond("The timezone for your server have been updated !")
+            await ctx.respond("The timezone for your server have been updated ! Please allow up to 1 minutes for the changes to appear with the show commands")
             
     @slash_command(guild_ids=guildIds, description="Show the timezone of the server")
     async def show_timezone(self, ctx):
