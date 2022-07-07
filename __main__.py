@@ -1,6 +1,7 @@
 import discord
 import os
 from discord.ext.commands.errors import MissingPermissions
+from BackupGenerator import BackupGenerator
 from MarkdownDiscord import Message
 from RoleTimeOutChecker import RoleTimeOutChecker
 from discord.utils import get
@@ -36,6 +37,7 @@ intents.members = True
 bot = discord.Bot(intents=intents)
 data = Data()
 timeChecker = RoleTimeOutChecker(data, bot)
+backup = BackupGenerator(data)
 
 bot.add_cog(TimezoneCog(bot, data))
 bot.add_cog(ShowCog(bot, data))
@@ -61,6 +63,7 @@ async def on_ready():
         if checkForServerTheBotIsNoLongerIn():
             data.saveData()
         timeChecker.start()
+        backup.start()
     except Exception as error:
         loggerStart.log(logging.ERROR, "Error while starting up. Excepton {}".format(error))
     loggerStart.log(logging.INFO, "Setup finish")

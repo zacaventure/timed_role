@@ -68,10 +68,14 @@ class Data:
         else:
             self.servers = []
                 
-    def saveData(self) -> None:
+    def saveData(self, file = None) -> None:
         start = datetime.datetime.now()
-        with open(Data.SAVE_FILE,'wb') as f:
-            pickle.dump(self.servers, f)
+        if file is None:
+            with open(Data.SAVE_FILE,'wb') as f:
+                pickle.dump(self.servers, f)
+        else:
+            with open(file,'wb') as f:
+                pickle.dump(self.servers, f)
         delta = datetime.datetime.now()-start
         if delta > self.longestTimedelta:
             self.logger.log(logging.INFO, "New longest write: {}".format(delta))

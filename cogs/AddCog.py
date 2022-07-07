@@ -5,7 +5,6 @@ from discord.commands import (  # Importing the decorator that makes slash comma
 from discord.ext import commands
 from constant import guildIds
 from data import Data
-from discord.ext.commands import has_permissions
 import datetime
 
 from data_structure.GlobalTimeRole import GlobalTimedRole
@@ -23,7 +22,7 @@ class AddCog(commands.Cog):
         return False
 
     @slash_command(guild_ids=guildIds, description="Add a new global time role with a expiration date.")    
-    @has_permissions(manage_roles=True)
+    @discord.default_permissions(manage_roles=True)
     async def add_global_timed_role(self, ctx, role: discord.Option(discord.Role, "The role that will be added as a global timed role of your server"),
                                     year: discord.Option(int, "The year when the global role expire", min_value=1),
                                     month: discord.Option(int, "The month when the global role expire", min_value=1, max_value=12),
@@ -46,7 +45,7 @@ class AddCog(commands.Cog):
         await ctx.respond("The global role was added to the global timed role of the server")
         
     @slash_command(guild_ids=guildIds, description="Add a server timed role.Users getting that role will get a timed role")    
-    @has_permissions(manage_roles=True)
+    @discord.default_permissions(manage_roles=True)
     async def add_timed_role_to_server(self, ctx, role: discord.Option(discord.Role, "The Role that will be a time role for yoru server"),
                                     days: discord.Option(int, "The number of days before the role expire", min_value=0),
                                     hours : discord.Option(int, "The number of hours days before the role expire (is adding time on top of days)", min_value=0, default=0), 
@@ -66,7 +65,7 @@ class AddCog(commands.Cog):
 
         
     @slash_command(guild_ids=guildIds, description="Manually add a timed role to a user")            
-    @has_permissions(manage_roles=True)
+    @discord.default_permissions(manage_roles=True)
     async def add_timed_role_to_user(self, ctx, member: discord.Option(discord.Member, "The member that will reecive the time role"),
                                     role: discord.Option(discord.Role, "The Role that will be a time role for the member"),
                                     days: discord.Option(int, "The number of days before the role expire", min_value=0),

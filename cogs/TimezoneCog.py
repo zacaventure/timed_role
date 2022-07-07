@@ -3,7 +3,6 @@ from discord.commands import (  # Importing the decorator that makes slash comma
     slash_command,
 )
 from discord.ext import commands
-from discord.ext.commands import has_permissions
 from constant import guildIds
 from data import Data
 import pytz
@@ -15,7 +14,7 @@ class TimezoneCog(commands.Cog):
         self.data = data
 
     @slash_command(guild_ids=guildIds, description="Update the timezone of the server")
-    @has_permissions(manage_roles=True)
+    @discord.default_permissions(manage_roles=True)
     async def set_timezone(self, ctx, timezone: discord.Option(str, "The timezone for your server")):
         await ctx.defer()
         if timezone not in pytz.all_timezones:
