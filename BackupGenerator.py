@@ -33,7 +33,7 @@ class BackupGenerator(commands.Cog):
             if len(files) > self.max_backup:
                 files.sort(reverse=False)
                 os.remove(os.path.join(BACKUP_DIR, files[0]))
-            self.data.saveData(file=os.path.join(BACKUP_DIR, now.strftime("%m%d%Y%H%M%S") + ".bin" ))
+            self.data.saveData(file=os.path.join(BACKUP_DIR, now.strftime("%Y_%m_%d-%H_%M_%S") + ".bin" ))
         else:
             logger.error("The dir {} does not exist".format(BACKUP_DIR))
             
