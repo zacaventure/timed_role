@@ -97,23 +97,30 @@ async def help(ctx):
     await ctx.respond(embed=embed)
     
 @bot.event
-async def on_member_update(before, after):
-    if len(before.roles) < len(after.roles):
-        roleAdded = list(set(after.roles) - set(before.roles))[0]
-        data.addTimedRole(after.guild.id, after.id, roleAdded.id)
-    elif len(before.roles) > len(after.roles):
-        roleRemove = list(set(before.roles) - set(after.roles))[0]
+async def on_member_update(before: discord.Member, after: discord.Member):
+    before_roles = set(before.roles)
+    after_roles = set(after.roles)
+    
+    deleted_roles = before_roles.difference(after_roles)
+    added_roles = after_roles.difference(before_roles)
+    
+    for added_role in added_roles:
+        data.addTimedRole(after.guild.id, after.id, added_role.id, saveData=False)
+        
+    for deleted_role in deleted_roles:
         member = data.getMember(after.guild.id, after.id)
         i = 0
         isIn = False
         for timeRole in member.timedRole:
-            if timeRole.roleId == roleRemove.id:
+            if timeRole.roleId == deleted_role.id:
                 isIn = True
                 break
             i += 1
         if isIn:
             del member.timedRole[i]
-            data.saveData()
+        
+    if len(deleted_roles) != 0 or len(added_roles) != 0:
+        data.saveData()
     
 @bot.event
 async def on_application_command_error(ctx, error: Exception):
