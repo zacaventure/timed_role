@@ -1,7 +1,7 @@
 import datetime
 
 class TimedRole:
-    def __init__(self, roleId: str, timeToKeep: datetime.timedelta) -> None:
+    def __init__(self, roleId: int, timeToKeep: datetime.timedelta) -> None:
         self.roleId = roleId
         self.addedTime = datetime.datetime.now()
         self.timeToKeep = timeToKeep

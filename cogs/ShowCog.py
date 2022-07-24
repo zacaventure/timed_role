@@ -3,6 +3,7 @@ from discord.commands import (  # Importing the decorator that makes slash comma
     slash_command,
 )
 from discord.ext import commands
+from cogs.Util import get_member_from_id
 from constant import guildIds
 from data import Data
 from data_structure.Server import Server
@@ -80,10 +81,10 @@ class ShowCog(commands.Cog):
         await ctx.respond(embed=embed2)
         
     @slash_command(guild_ids=guildIds, description="Show all the user of a timed role. The time until expire is also shown")
-    async def show_timed_role_users(self, ctx, role: discord.Option(discord.Role, "The common role of the members")):
+    async def show_timed_role_users(self, ctx: discord.ApplicationContext, 
+                                    role: discord.Option(discord.Role, "The common role of the members")):
         await ctx.defer()
         server = self.data.getServer(ctx.guild.id)
-        guild = self.bot.get_guild(server.serverId)
 
         isTimedRoleGlobal=False
         positionGlobalTimedRole=0
@@ -92,31 +93,34 @@ class ShowCog(commands.Cog):
                 isTimedRoleGlobal=True
                 break
             positionGlobalTimedRole += 1
-            
+        
+        members_mentions = {}
         description = ""
         membersTimeDeltaRemain = {}
         memberNoTimedRole = []
         for member in server.members:
             for timeRole in member.timedRole:
                 if timeRole.roleId == role.id:
-                    membersTimeDeltaRemain[member.memberId] = timeRole.getRemainingTimeDelta()
+                    member_discord = await get_member_from_id(ctx.guild, member.memberId)
+                    if member_discord is not None:
+                        membersTimeDeltaRemain[member_discord.id] = timeRole.getRemainingTimeDelta()
+                        members_mentions[member_discord.id] = member_discord.mention
                     break
-                
-        guild : discord.Guild = self.bot.get_guild(server.serverId)
-        for memberDiscord in guild.members:
+                                
+        for memberDiscord in ctx.guild.members:
             if role in memberDiscord.roles:
                 if isTimedRoleGlobal:
                     globalTimedRoleTimeDelta = server.globalTimeRoles[positionGlobalTimedRole].getRemainingTimeDelta(server.timezone)
                     if memberDiscord.id not in membersTimeDeltaRemain or globalTimedRoleTimeDelta < membersTimeDeltaRemain[memberDiscord.id]:
                         membersTimeDeltaRemain[memberDiscord.id] = globalTimedRoleTimeDelta
+                        members_mentions[memberDiscord.id] = member_discord.mention
                         
                 elif not isTimedRoleGlobal and memberDiscord.id not in membersTimeDeltaRemain:
                     memberNoTimedRole.append(memberDiscord)
                     
         membersTimeDeltaRemain = {k: v for k, v in sorted(membersTimeDeltaRemain.items(), key=lambda item: item[1])} # Sort with expiration days 
         for memberId, timedelta in membersTimeDeltaRemain.items():
-            discord_member = guild.get_member(memberId)
-            description += "{} with {} left \n".format(discord_member.mention, str(timedelta).split(".")[0])
+            description += "{} with {} left \n".format(members_mentions[memberId], str(timedelta).split(".")[0])
         if description == "":
             description = "Nobody have this timed role"
         embed = discord.Embed(

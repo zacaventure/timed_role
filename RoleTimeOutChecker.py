@@ -4,8 +4,10 @@ import os
 import discord
 from discord.ext import commands, tasks
 from RetryInfo import RetryInfo
+from cogs.Util import is_connected_to_internet
 from data import Data
 from data_structure.Server import Server
+from constant import loop_time_check_seconds
 
 
 class RoleTimeOutChecker(commands.Cog):
@@ -55,9 +57,9 @@ class RoleTimeOutChecker(commands.Cog):
             return False
         return True
 
-    @tasks.loop(seconds=60)
+    @tasks.loop(seconds=loop_time_check_seconds)
     async def timeChecker(self):
-        if not self.isLooping:
+        if not self.isLooping and await is_connected_to_internet():
             self.isLooping = True
             start = datetime.datetime.now()
             try:
@@ -126,7 +128,8 @@ class RoleTimeOutChecker(commands.Cog):
             except Exception as e2:
                 self.handleError(e2, guild, memberId, roleId)
                 role_get = None 
-        if member is not None and role_get is not None:   
+        if member is not None and role_get is not None:
+            print("removed " + role_get.name)
             if role_get in member.roles:
                 try:
                     await member.remove_roles(role_get, reason = "Your role has expired")
