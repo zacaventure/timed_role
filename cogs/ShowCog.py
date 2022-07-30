@@ -46,8 +46,8 @@ class ShowCog(commands.Cog):
                                          titles="Global timed role of your server",
                                          footers="Note: Global roles expire for everyone in the server at the same time !")
             
-        await paginator_server.respond(ctx.interaction, ephemeral=False)
-        await paginator_global.respond(ctx.interaction, ephemeral=False)
+        await paginator_server.respond(ctx.interaction, ephemeral=True)
+        await paginator_global.respond(ctx.interaction, ephemeral=True)
         
     @slash_command(guild_ids=guildIds, description="Show all the individual and global timed role of a member")
     async def show_timed_role_of_member(self, ctx, member: discord.Option(discord.Member, "The member which roles will be show")):
@@ -80,8 +80,8 @@ class ShowCog(commands.Cog):
             value = "No global timed role for {}".format(member.name) 
         paginator_global = get_paginator(value, titles="Global timed role of {}".format(member.name))
         
-        await paginator_server.respond(ctx.interaction, ephemeral=False)
-        await paginator_global.respond(ctx.interaction, ephemeral=False)
+        await paginator_server.respond(ctx.interaction, ephemeral=True)
+        await paginator_global.respond(ctx.interaction, ephemeral=True)
         
     @slash_command(guild_ids=guildIds, description="Show all the user of a timed role. The time until expire is also shown")
     async def show_timed_role_users(self, ctx: discord.ApplicationContext, 
@@ -135,7 +135,7 @@ class ShowCog(commands.Cog):
             i += 1
         paginator_no_time_role = get_paginator(description,
                                                titles="Has the role, but not a timed role for these members".format(role.name))
-        
-        await paginator_has_role.respond(ctx.interaction, ephemeral=False)
+        embed = discord.Embed()
+        await paginator_has_role.respond(ctx.interaction, ephemeral=True)
         if len(memberNoTimedRole) != 0:
-            await paginator_no_time_role.respond(ctx.interaction, ephemeral=False)
+            await paginator_no_time_role.respond(ctx.interaction, ephemeral=True)

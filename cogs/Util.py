@@ -35,7 +35,7 @@ def generate_pages(item_list, max_number_of_item_per_page, titles: str = "", foo
                     embed
                 ],
             ))
-            count = 1
+            count = 0
             embedText = ""
         count += 1
         realCount += 1
@@ -44,7 +44,7 @@ def generate_pages(item_list, max_number_of_item_per_page, titles: str = "", foo
 def get_paginator(text: str, titles: str = "", footers: str = "", max_number_of_item_per_page=MAX_ITEM_PER_PAGES_DEFAULT):
     return pages.Paginator(pages=generate_pages(text.strip().split("\n"),
                                                 max_number_of_item_per_page, 
-                                                titles=titles, footers=footers))
+                                                titles=titles, footers=footers))     
 
 async def get_member_from_id(guild: discord.Guild, memberId: int) -> discord.Member:
     global logger
