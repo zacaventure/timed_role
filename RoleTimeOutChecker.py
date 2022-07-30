@@ -129,7 +129,6 @@ class RoleTimeOutChecker(commands.Cog):
                 self.handleError(e2, guild, memberId, roleId)
                 role_get = None 
         if member is not None and role_get is not None:
-            print("removed " + role_get.name)
             if role_get in member.roles:
                 try:
                     await member.remove_roles(role_get, reason = "Your role has expired")

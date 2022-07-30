@@ -39,10 +39,14 @@ class AddCog(commands.Cog):
                 globalTimeRole.endDate = datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute, tzinfo=server.timezone)
                 await ctx.respond("The global role already exist... updating end date")
                 return
-            
-        server.globalTimeRoles.append(GlobalTimedRole(role.id, datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute, tzinfo=server.timezone)))
+        
+        globalRole = GlobalTimedRole(role.id, datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute, tzinfo=server.timezone))
+        server.globalTimeRoles.append(globalRole)
         self.data.saveData()
-        await ctx.respond("The global role was added to the global timed role of the server")
+        embed = discord.Embed(
+            title="Global time role added sucessfully !",
+            description="The time role {} was added to the global timed role of the server with a expiration date of {}".format(role.mention, globalRole.printEndDate()))
+        await ctx.respond(embed=embed)
         
     @slash_command(guild_ids=guildIds, description="Add a server timed role.Users getting that role will get a timed role")    
     @discord.default_permissions(manage_roles=True)
@@ -61,7 +65,10 @@ class AddCog(commands.Cog):
             if role in memberDiscord.roles:
                 self.data.addTimedRole(ctx.guild.id, memberDiscord.id, role.id, saveData=False, server=server)
         self.data.saveData()
-        await ctx.respond("The role was added to the timed role of the server with a time delta of {}".format(timedelta))
+        embed = discord.Embed(
+            title="Server time role added sucessfully !",
+            description="The time role {} was added to the timed role of the server with a time delta of {}".format(role.mention, timedelta))
+        await ctx.respond(embed=embed)
 
         
     @slash_command(guild_ids=guildIds, description="Manually add a timed role to a user")            
@@ -88,7 +95,10 @@ class AddCog(commands.Cog):
         if not roleIn:
             memberData.timedRole.append(TimedRole(role.id, timedelta))
             await member.add_roles(role)
-            await ctx.respond("Custom role delivered !")
+            embed = discord.Embed(
+                title="Custom role delivered sucess !",
+                description="The time role {} was deliver to {} with a time delta of {}".format(role.mention, member.mention, timedelta))
+            await ctx.respond(embed=embed)
             self.data.saveData()
         else:
             memberData.timedRole[pos].addedTime = datetime.datetime.now()

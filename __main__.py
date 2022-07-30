@@ -4,14 +4,12 @@ from discord.ext.commands.errors import MissingPermissions
 from BackupGenerator import BackupGenerator
 from MarkdownDiscord import Message
 from RoleTimeOutChecker import RoleTimeOutChecker
-from discord.utils import get
 from cogs.AddCog import AddCog
 from cogs.RemoveCog import RemoveCog
 from cogs.ShowCog import ShowCog
 from cogs.TimezoneCog import TimezoneCog
 from data import Data
-from data_structure.TimedRole import TimedRole
-from data_structure.Server import Server
+from discord.ext.commands import Bot
 import logging
 from constant import TOKEN, guildIds
 
@@ -34,7 +32,7 @@ loggerStart.addHandler(handler)
 
 intents = discord.Intents.default()
 intents.members = True
-bot = discord.Bot(intents=intents)
+bot: Bot = Bot(intents=intents)
 data = Data()
 timeChecker = RoleTimeOutChecker(data, bot)
 backup = BackupGenerator(data)

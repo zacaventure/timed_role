@@ -3,7 +3,7 @@ from discord.commands import (  # Importing the decorator that makes slash comma
     slash_command,
 )
 from discord.ext import commands
-from cogs.Util import get_member_from_id
+from cogs.Util import get_member_from_id, get_paginator
 from constant import guildIds
 from data import Data
 from data_structure.Server import Server
@@ -18,34 +18,36 @@ class ShowCog(commands.Cog):
     async def show_timed_role_of_server(self, ctx):
         await ctx.defer()
         server = self.data.getServer(ctx.guild.id)
-        embed = discord.Embed()
-        
-        value=""
+                
+        value_server=""
         i = 1
         server.timedRoleOfServer = {k: v for k, v in sorted(server.timedRoleOfServer.items(), key=lambda item: item[1])} # Sort with expiration days
         for roleId, timedelta in server.timedRoleOfServer.items():
             role_get = get(ctx.guild.roles, id=roleId)
             if role_get is not None:
-                value += "{}) {} with a time delta of {} \n".format(i, role_get.mention, str(timedelta).split(".")[0])
+                value_server += "{}) {} with a time delta of {} \n".format(i, role_get.mention, str(timedelta).split(".")[0])
                 i += 1
-        if value == "":
-            value = "No timed role for your server" 
-        embed = discord.Embed(title="Timed role of your server", description=value)
+        if value_server == "":
+            value_server = "No timed role for your server" 
+        paginator_server = get_paginator(value_server, titles="Timed role of your server")
         
-        value=""
+        
+        value_global=""
         i = 1
         server.globalTimeRoles.sort()
         for timeRole in server.globalTimeRoles:
             role_get = get(ctx.guild.roles, id=timeRole.roleId)
             if role_get is not None:
-                value += "{}) {} expire on {} \n".format(i, role_get.mention, timeRole.printEndDate())
+                value_global += "{}) {} expire on {} \n".format(i, role_get.mention, timeRole.printEndDate())
                 i += 1
-        if value == "":
-            value = "No global timed role for your server" 
-        embed2 = discord.Embed(title="Global timed role of your server", description=value)
-        embed2.set_footer(text="Note: Global roles expire for everyone in the server at the same time !")
-        await ctx.respond(embed=embed)
-        await ctx.respond(embed=embed2)
+        if value_global == "":
+            value_global = "No global timed role for your server"
+        paginator_global = get_paginator(value_global,
+                                         titles="Global timed role of your server",
+                                         footers="Note: Global roles expire for everyone in the server at the same time !")
+            
+        await paginator_server.respond(ctx.interaction, ephemeral=False)
+        await paginator_global.respond(ctx.interaction, ephemeral=False)
         
     @slash_command(guild_ids=guildIds, description="Show all the individual and global timed role of a member")
     async def show_timed_role_of_member(self, ctx, member: discord.Option(discord.Member, "The member which roles will be show")):
@@ -64,7 +66,7 @@ class ShowCog(commands.Cog):
                 i += 1
         if value == "":
             value = "No timed role for {}".format(member.name) 
-        embed = discord.Embed(title="Timed role of {}".format(member.name), description=value)
+        paginator_server = get_paginator(value, titles="Timed role of {}".format(member.name))
         
         value=""
         i = 1
@@ -76,9 +78,10 @@ class ShowCog(commands.Cog):
             i += 1
         if value == "":
             value = "No global timed role for {}".format(member.name) 
-        embed2 = discord.Embed(title="Global timed role of {}".format(member.name), description=value)
-        await ctx.respond(embed=embed)
-        await ctx.respond(embed=embed2)
+        paginator_global = get_paginator(value, titles="Global timed role of {}".format(member.name))
+        
+        await paginator_server.respond(ctx.interaction, ephemeral=False)
+        await paginator_global.respond(ctx.interaction, ephemeral=False)
         
     @slash_command(guild_ids=guildIds, description="Show all the user of a timed role. The time until expire is also shown")
     async def show_timed_role_users(self, ctx: discord.ApplicationContext, 
@@ -123,20 +126,16 @@ class ShowCog(commands.Cog):
             description += "{} with {} left \n".format(members_mentions[memberId], str(timedelta).split(".")[0])
         if description == "":
             description = "Nobody have this timed role"
-        embed = discord.Embed(
-            title="Has the timed role {}".format(role.name),
-            description=description
-        )
+        paginator_has_role = get_paginator(description, titles="Has the timed role {}".format(role.name))
         
         description=""
         i = 1
         for discordMember in memberNoTimedRole:
             description += "{}) {} \n".format(i, discordMember.mention)
             i += 1
-        embedNoTimedRole = discord.Embed(
-            title="Has the role, but not a timed role for these members".format(role.name),
-            description=description
-        )
-        await ctx.respond(embed=embed)
+        paginator_no_time_role = get_paginator(description,
+                                               titles="Has the role, but not a timed role for these members".format(role.name))
+        
+        await paginator_has_role.respond(ctx.interaction, ephemeral=False)
         if len(memberNoTimedRole) != 0:
-            await ctx.respond(embed=embedNoTimedRole)
+            await paginator_no_time_role.respond(ctx.interaction, ephemeral=False)

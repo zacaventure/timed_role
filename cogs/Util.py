@@ -2,9 +2,12 @@ import logging
 import os
 import aiohttp
 import discord
+from discord.ext import pages
 
 
 import discord
+
+from constant import MAX_ITEM_PER_PAGES_DEFAULT
 
 MAX_NUMBER_OF_RETRIES = 10
 
@@ -14,6 +17,34 @@ file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..","logs", "u
 handler = logging.FileHandler(filename=file, encoding="utf-8", mode="w")
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)
+
+
+def generate_pages(item_list, max_number_of_item_per_page, titles: str = "", footers: str = ""):
+    pageList = []
+    realCount = 1
+    count = 1
+    embedText = ""
+    for item_str in item_list:
+        if count <= max_number_of_item_per_page:
+            embedText += item_str + "\n"
+        if count >= max_number_of_item_per_page or realCount == len(item_list):
+            embed = discord.Embed(description=embedText, title=titles)
+            embed.set_footer(text=footers)
+            pageList.append(pages.Page(
+                embeds=[
+                    embed
+                ],
+            ))
+            count = 1
+            embedText = ""
+        count += 1
+        realCount += 1
+    return pageList
+
+def get_paginator(text: str, titles: str = "", footers: str = "", max_number_of_item_per_page=MAX_ITEM_PER_PAGES_DEFAULT):
+    return pages.Paginator(pages=generate_pages(text.strip().split("\n"),
+                                                max_number_of_item_per_page, 
+                                                titles=titles, footers=footers))
 
 async def get_member_from_id(guild: discord.Guild, memberId: int) -> discord.Member:
     global logger

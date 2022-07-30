@@ -9,6 +9,7 @@ guildIds = None # force global commands
 
 
 loop_time_check_seconds = 60
+MAX_ITEM_PER_PAGES_DEFAULT = 10
 
 BACKUP_DIR = os.getenv("BACKUP_DIR")
 TOKEN = os.getenv("TOKEN")
