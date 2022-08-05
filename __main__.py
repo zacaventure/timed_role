@@ -87,10 +87,10 @@ async def on_ready():
         loggerStart.info("Backup on start done")
         loggerStart.info("Bot in {} guilds. Guilds: {}".format(len(bot.guilds), bot.guilds))
         try:
-            if check_bot_still_in_server() or await checkForMemberChanges():
-                data.saveData()
             timeChecker.start()
             loggerStart.info("Time checker loop started")
+            if check_bot_still_in_server() or await checkForMemberChanges():
+                data.saveData()
             backup.start()
             loggerStart.info("Backup loop started")
             loggerStart.info("All Setup finish")
@@ -105,26 +105,31 @@ async def checkForMemberChanges():
     nb_role_added = 0
     changes = False
     start_time = datetime.now(LOCAL_TIME_ZONE)
+    nb_server_done = 0
+    temp_role_added = 0
     for guild in bot.guilds:
         server = data.getServer(guild.id)
+        temp_role_added = 0
         for member_discord in guild.members:
             member = data.getMember(member_discord.guild.id, member_discord.id, server=server)
             for role in member_discord.roles:
-                
-                isIn = False
-                pos = 0
-                for timedRoleMember in member.timedRole:
-                    if timedRoleMember.roleId == role.id:
-                        isIn=True
-                        break
-                    pos += 1
-                    
                 if role.id in server.timedRoleOfServer:
+                    isIn = False
+                    pos = 0
+                    for timedRoleMember in member.timedRole:
+                        if timedRoleMember.roleId == role.id:
+                            isIn=True
+                            break
+                        pos += 1
                     if not isIn:
                         # member got a timed role while bot down
                         member.timedRole.append(TimedRole(role.id, server.timedRoleOfServer[role.id]))
                         changes = True
                         nb_role_added += 1
+                        temp_role_added += 1
+            nb_server_done += 1
+            loggerStart.info("{} servers done (id={}, name={}). {} more timed role added".format(
+                nb_server_done, guild.id, guild.name ,temp_role_added))
     loggerStart.info("Changes in members setup finish. {} roles added after {}".format(
         nb_role_added, datetime.now(LOCAL_TIME_ZONE) - start_time))
     return changes
