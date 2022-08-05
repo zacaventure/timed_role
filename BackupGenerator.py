@@ -24,16 +24,17 @@ class BackupGenerator(commands.Cog):
     def start(self):
         self.backup_loop.start()
         
-
-    @tasks.loop(hours=1)
-    async def backup_loop(self):
+    def backup_now(self, additional_info: str = ""):
         if os.path.isdir(BACKUP_DIR):
             now = datetime.datetime.now()
             files = os.listdir(BACKUP_DIR)
             if len(files) > self.max_backup:
                 files.sort(reverse=False)
                 os.remove(os.path.join(BACKUP_DIR, files[0]))
-            self.data.saveData(file=os.path.join(BACKUP_DIR, now.strftime("%Y_%m_%d-%H_%M_%S") + ".bin" ))
+            self.data.saveData(file=os.path.join(BACKUP_DIR, now.strftime("%Y_%m_%d-%H_%M_%S") + additional_info + ".bin" ))
         else:
             logger.error("The dir {} does not exist".format(BACKUP_DIR))
-            
+
+    @tasks.loop(hours=1)
+    async def backup_loop(self):
+        self.backup_now()

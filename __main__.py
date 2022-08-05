@@ -1,6 +1,8 @@
+from datetime import datetime
 import discord
 import os
 from discord.ext.commands.errors import MissingPermissions
+from numpy import insert
 from BackupGenerator import BackupGenerator
 from MarkdownDiscord import Message
 from RoleTimeOutChecker import RoleTimeOutChecker
@@ -11,7 +13,10 @@ from cogs.TimezoneCog import TimezoneCog
 from data import Data
 from discord.ext.commands import Bot
 import logging
-from constant import TOKEN, guildIds
+from constant import LOCAL_TIME_ZONE, TOKEN, guildIds
+from data_structure.TimedRole import TimedRole
+
+logging.Formatter.converter = lambda *args: datetime.now(tz=LOCAL_TIME_ZONE).timetuple()
 
 
 #logging
@@ -24,14 +29,17 @@ logger.addHandler(handler)
 
 loggerStart = logging.getLogger("discord_start")
 loggerStart.setLevel(logging.INFO)
+loggerStart
 file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "logs", "start.log")
 handler = logging.FileHandler(filename=file, encoding="utf-8", mode="w")
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 loggerStart.addHandler(handler)
 
 
-intents = discord.Intents.default()
+intents = discord.Intents.none()
 intents.members = True
+intents.guilds = True
+
 bot: Bot = Bot(intents=intents)
 data = Data()
 timeChecker = RoleTimeOutChecker(data, bot)
@@ -44,43 +52,101 @@ bot.add_cog(AddCog(bot, data))
 
 @bot.event
 async def on_guild_join(guild: discord.Guild):
-    loggerStart.log(logging.INFO, "Bot just joined {}. The bot is not in {} guilds. Guilds: {}".format(guild.name, len(bot.guilds), bot.guilds))
+    loggerStart.log(logging.INFO, "Bot just joined {}. The bot is now in {} guilds. Guilds: {}".format(guild.name, len(bot.guilds), bot.guilds))
 
 @bot.event
 async def on_guild_remove(guild: discord.Guild):
-    loggerStart.log(logging.INFO, "Bot just left {}. The bot is not in {} guilds. Guilds: {}".format(guild.name, len(bot.guilds), bot.guilds))
+    loggerStart.log(logging.INFO, "Bot just left {}. The bot is now in {} guilds. Guilds: {}".format(guild.name, len(bot.guilds), bot.guilds))
     server = data.getServer(guild.id)
     data.servers.remove(server)
     data.saveData()
 
+@bot.event  
+async def on_guild_role_delete(role: discord.Role):
+    # No need to remove role from members, because the on_member_update event will be trigger for each member who lost the role
+    data.delete_time_role(role.id, role.guild.id, remove_role_in_members=False)
+    
+@bot.event     
+async def on_member_remove(member: discord.Member):
+    data.remove_member(member.id, member.guild.id)
+
+bot_start_time = None
+@bot.event
+async def on_connect():
+    global bot_start_time
+    bot_start_time = datetime.now(LOCAL_TIME_ZONE)
+    
+setup_done = False
 @bot.event
 async def on_ready():
-    print("We have logged in as {0.user}".format(bot))
-    loggerStart.log(logging.INFO, "Bot in {} guilds. Guilds: {}".format(len(bot.guilds), bot.guilds))
-    try:
-        if checkForServerTheBotIsNoLongerIn():
-            data.saveData()
-        timeChecker.start()
-        backup.start()
-    except Exception as error:
-        loggerStart.log(logging.ERROR, "Error while starting up. Excepton {}".format(error))
-    loggerStart.log(logging.INFO, "Setup finish")
+    global bot_start_time
+    global setup_done
+    if not setup_done:
+        loggerStart.info("The bot started in {} ".format( datetime.now(LOCAL_TIME_ZONE) - bot_start_time))
+        print("We have logged in as {0.user}".format(bot))
+        backup.backup_now(additional_info="_before_setup")
+        loggerStart.info("Backup on start done")
+        loggerStart.info("Bot in {} guilds. Guilds: {}".format(len(bot.guilds), bot.guilds))
+        try:
+            if check_bot_still_in_server() or await checkForMemberChanges():
+                data.saveData()
+            timeChecker.start()
+            loggerStart.info("Time checker loop started")
+            backup.start()
+            loggerStart.info("Backup loop started")
+            loggerStart.info("All Setup finish")
+            backup.backup_now(additional_info="_after_setup")
+            loggerStart.info("Backup on setup finish done")
+        except Exception as error:
+            loggerStart.exception("Error while starting up. Excepton {}".format(error))
+        setup_done = True
+    
+    
+async def checkForMemberChanges():
+    nb_role_added = 0
+    changes = False
+    start_time = datetime.now(LOCAL_TIME_ZONE)
+    for guild in bot.guilds:
+        server = data.getServer(guild.id)
+        for member_discord in guild.members:
+            member = data.getMember(member_discord.guild.id, member_discord.id, server=server)
+            for role in member_discord.roles:
+                
+                isIn = False
+                pos = 0
+                for timedRoleMember in member.timedRole:
+                    if timedRoleMember.roleId == role.id:
+                        isIn=True
+                        break
+                    pos += 1
+                    
+                if role.id in server.timedRoleOfServer:
+                    if not isIn:
+                        # member got a timed role while bot down
+                        member.timedRole.append(TimedRole(role.id, server.timedRoleOfServer[role.id]))
+                        changes = True
+                        nb_role_added += 1
+    loggerStart.info("Changes in members setup finish. {} roles added after {}".format(
+        nb_role_added, datetime.now(LOCAL_TIME_ZONE) - start_time))
+    return changes
     
 
-def checkForServerTheBotIsNoLongerIn():
+def check_bot_still_in_server():
     serversToDelete = []
+    guild_ids = set()
+    start_time = datetime.now()
+    for guild in bot.guilds:
+        guild_ids.add(guild.id)
+    
     for server in data.servers:
-        isIn = False
-        for guild in bot.guilds:
-            if server.serverId == guild.id:
-                isIn = True
-                break
-        if not isIn:
+        if server.serverId not in guild_ids:
             serversToDelete.append(server)
             
     for serverToDelete in serversToDelete:
         data.servers.remove(serverToDelete)
-    
+        
+    loggerStart.log(logging.INFO, "Changes in guilds setup finish. {} Guild deleted after {}".format(
+        len(serversToDelete), datetime.now() - start_time))
     return len(serversToDelete) != 0
       
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Show help window")

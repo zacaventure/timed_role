@@ -15,8 +15,8 @@ class ShowCog(commands.Cog):
         self.data = data
 
     @slash_command(guild_ids=guildIds, description="Show all the individual and global timed role of your server")
-    async def show_timed_role_of_server(self, ctx):
-        await ctx.defer()
+    async def show_timed_role_of_server(self, ctx: discord.ApplicationContext):
+        await ctx.defer(ephemeral=True)
         server = self.data.getServer(ctx.guild.id)
                 
         value_server=""
@@ -51,7 +51,7 @@ class ShowCog(commands.Cog):
         
     @slash_command(guild_ids=guildIds, description="Show all the individual and global timed role of a member")
     async def show_timed_role_of_member(self, ctx, member: discord.Option(discord.Member, "The member which roles will be show")):
-        await ctx.defer()
+        await ctx.defer(ephemeral=True)
         server: Server = self.data.getServer(ctx.guild.id)
         embed = discord.Embed()
         
@@ -86,7 +86,7 @@ class ShowCog(commands.Cog):
     @slash_command(guild_ids=guildIds, description="Show all the user of a timed role. The time until expire is also shown")
     async def show_timed_role_users(self, ctx: discord.ApplicationContext, 
                                     role: discord.Option(discord.Role, "The common role of the members")):
-        await ctx.defer()
+        await ctx.defer(ephemeral=True)
         server = self.data.getServer(ctx.guild.id)
 
         isTimedRoleGlobal=False

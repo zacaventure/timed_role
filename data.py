@@ -1,5 +1,7 @@
 import datetime
 import logging
+
+import discord
 from data_structure.Member import Member
 from data_structure.Server import Server
 import pickle
@@ -21,7 +23,7 @@ class Data:
         self.logger.addHandler(handler)
         self.longestTimedelta = datetime.timedelta(days=-1)
     
-    def getServer(self, serverId: str) -> Server:
+    def getServer(self, serverId: int) -> Server:
         server = None
         for serverItr in self.servers:
             if serverItr.serverId == serverId:
@@ -33,7 +35,7 @@ class Data:
         return server
             
     
-    def getMember(self, serverId:str, memberId: str, server=None) -> Member:
+    def getMember(self, serverId:int, memberId: int, server=None) -> Member:
         if server is None:
             server = self.getServer(serverId)
         member = None
@@ -47,7 +49,7 @@ class Data:
 
         return member
     
-    def addTimedRole(self, serverId:str, userId: str, roleId : str, saveData=True, server=None, member=None) -> None:
+    def addTimedRole(self, serverId:int, userId: int, roleId : int, saveData=True, server=None, member=None) -> None:
         if server is None:
             server = self.getServer(serverId)
         if member is None:
@@ -80,3 +82,58 @@ class Data:
         if delta > self.longestTimedelta:
             self.logger.log(logging.INFO, "New longest write: {}".format(delta))
             self.longestTimedelta = delta
+            
+    def delete_time_role(self, role_id: int, server_id: int,
+                         remove_server: bool = True,
+                         remove_role_in_members: bool = True,
+                         remove_global: bool = True,
+                         server: Server = None):
+        changes = False
+        if server is None:
+            server = self.getServer(server_id)
+        
+        if remove_server:
+            if role_id in server.timedRoleOfServer:
+                changes = True
+                del server.timedRoleOfServer[role_id]
+            
+        if remove_global:
+            isIn = False
+            pos = 0
+            for globalTimeRole in server.globalTimeRoles:
+                if globalTimeRole.roleId == role_id:
+                    isIn=True
+                    break
+                pos += 1
+            if isIn:
+                changes = True
+                del server.globalTimeRoles[pos]
+        
+        if remove_role_in_members:
+            for member in server.members:
+                isIn = False
+                pos = 0
+                for time_role in member.timedRole:
+                    if time_role.roleId == role_id:
+                        isIn = True
+                        break
+                    pos += 1
+                if isIn:
+                    changes = True
+                    del member.timedRole[pos]
+        if changes:
+            self.saveData()
+        return changes
+    
+    def remove_member(self, member_id: int, server_id: int):
+        server = self.getServer(server_id)
+        pos = 0
+        isIn = False
+        for member_server in server.members:
+            if member_server.memberId == member_id:
+                isIn = True
+                break
+            pos += 1
+        if isIn:
+            del server.members[pos]
+            self.saveData()
