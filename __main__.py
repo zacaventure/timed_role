@@ -1,4 +1,5 @@
-from datetime import datetime
+import asyncio
+from datetime import datetime, timedelta
 import discord
 import os
 from discord.ext.commands.errors import MissingPermissions
@@ -100,13 +101,16 @@ async def on_ready():
             loggerStart.exception("Error while starting up. Excepton {}".format(error))
         setup_done = True
     
-    
 async def checkForMemberChanges():
+    max_time_given = timedelta(milliseconds=500)
+    last_check = datetime.now()
+
     nb_role_added = 0
     changes = False
     start_time = datetime.now(LOCAL_TIME_ZONE)
     nb_server_done = 0
     temp_role_added = 0
+    
     for guild in bot.guilds:
         server = data.getServer(guild.id)
         temp_role_added = 0
@@ -127,9 +131,12 @@ async def checkForMemberChanges():
                         changes = True
                         nb_role_added += 1
                         temp_role_added += 1
-            nb_server_done += 1
-            loggerStart.info("{} servers done (id={}, name={}). {} more timed role added".format(
-                nb_server_done, guild.id, guild.name ,temp_role_added))
+            if datetime.now() - last_check > max_time_given:
+                await asyncio.sleep(0.2)
+                last_check = datetime.now()
+        nb_server_done += 1
+        loggerStart.info("{} servers done (id={}, name={}). {} more timed role added".format(
+            nb_server_done, guild.id, guild.name ,temp_role_added))
     loggerStart.info("Changes in members setup finish. {} roles added after {}".format(
         nb_role_added, datetime.now(LOCAL_TIME_ZONE) - start_time))
     return changes
