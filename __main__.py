@@ -2,7 +2,6 @@ from datetime import datetime
 import discord
 import os
 from discord.ext.commands.errors import MissingPermissions
-from numpy import insert
 from BackupGenerator import BackupGenerator
 from MarkdownDiscord import Message
 from RoleTimeOutChecker import RoleTimeOutChecker
