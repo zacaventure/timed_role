@@ -102,18 +102,12 @@ async def on_ready():
         setup_done = True
     
 async def checkForMemberChanges():
-    max_time_given = timedelta(milliseconds=500)
-    last_check = datetime.now()
-
     nb_role_added = 0
     changes = False
     start_time = datetime.now(LOCAL_TIME_ZONE)
-    nb_server_done = 0
-    temp_role_added = 0
     
     for guild in bot.guilds:
         server = data.getServer(guild.id)
-        temp_role_added = 0
         for member_discord in guild.members:
             member = data.getMember(member_discord.guild.id, member_discord.id, server=server)
             for role in member_discord.roles:
@@ -130,13 +124,8 @@ async def checkForMemberChanges():
                         member.timedRole.append(TimedRole(role.id, server.timedRoleOfServer[role.id]))
                         changes = True
                         nb_role_added += 1
-                        temp_role_added += 1
-            if datetime.now() - last_check > max_time_given:
-                await asyncio.sleep(0.2)
-                last_check = datetime.now()
-        nb_server_done += 1
-        loggerStart.info("{} servers done (id={}, name={}). {} more timed role added".format(
-            nb_server_done, guild.id, guild.name ,temp_role_added))
+                # give the chance to other process to run
+                await asyncio.sleep(0)
     loggerStart.info("Changes in members setup finish. {} roles added after {}".format(
         nb_role_added, datetime.now(LOCAL_TIME_ZONE) - start_time))
     return changes
