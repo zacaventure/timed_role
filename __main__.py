@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta
+from multiprocessing.pool import AsyncResult, ThreadPool
 import discord
 import os
 from discord.ext.commands.errors import MissingPermissions
@@ -76,34 +77,11 @@ async def on_connect():
     global bot_start_time
     bot_start_time = datetime.now(LOCAL_TIME_ZONE)
     
-setup_done = False
-@bot.event
-async def on_ready():
-    global bot_start_time
-    global setup_done
-    if not setup_done:
-        loggerStart.info("The bot started in {} ".format( datetime.now(LOCAL_TIME_ZONE) - bot_start_time))
-        print("We have logged in as {0.user}".format(bot))
-        backup.backup_now(additional_info="_before_setup")
-        loggerStart.info("Backup on start done")
-        loggerStart.info("Bot in {} guilds. Guilds: {}".format(len(bot.guilds), bot.guilds))
-        try:
-            timeChecker.start()
-            loggerStart.info("Time checker loop started")
-            if check_bot_still_in_server() or await checkForMemberChanges():
-                data.saveData()
-            backup.start()
-            loggerStart.info("Backup loop started")
-            loggerStart.info("All Setup finish")
-            backup.backup_now(additional_info="_after_setup")
-            loggerStart.info("Backup on setup finish done")
-        except Exception as error:
-            loggerStart.exception("Error while starting up. Excepton {}".format(error))
-        setup_done = True
-    
-async def checkForMemberChanges():
+async def check_for_member_changes():
     nb_role_added = 0
     changes = False
+    max_time_given = timedelta(milliseconds=500)
+    last_check = datetime.now()
     start_time = datetime.now(LOCAL_TIME_ZONE)
     
     for guild in bot.guilds:
@@ -124,11 +102,45 @@ async def checkForMemberChanges():
                         member.timedRole.append(TimedRole(role.id, server.timedRoleOfServer[role.id]))
                         changes = True
                         nb_role_added += 1
-                # give the chance to other process to run
-                await asyncio.sleep(0)
+                # give other request time, and reduce core load on the server
+                if datetime.now() - last_check > max_time_given:
+                    await asyncio.sleep(0.2)
+                    last_check = datetime.now()
+                else:
+                    await asyncio.sleep(0)
+            await asyncio.sleep(0)
     loggerStart.info("Changes in members setup finish. {} roles added after {}".format(
         nb_role_added, datetime.now(LOCAL_TIME_ZONE) - start_time))
     return changes
+    
+setup_done = False
+@bot.event
+async def on_ready():
+    global bot_start_time
+    global setup_done
+    if not setup_done:
+        loggerStart.info("The bot started in {} ".format( datetime.now(LOCAL_TIME_ZONE) - bot_start_time))
+        print("We have logged in as {0.user}".format(bot))
+        backup.backup_now(additional_info="_before_setup")
+        loggerStart.info("Backup on start done")
+        loggerStart.info("Bot in {} guilds. Guilds: {}".format(len(bot.guilds), bot.guilds))
+        try:
+            timeChecker.start()
+            loggerStart.info("Time checker loop started successfully")
+            
+            if check_bot_still_in_server() or await check_for_member_changes():
+                data.saveData()
+                
+            backup.backup_now(additional_info="_after_setup")
+            loggerStart.info("Backup on setup finish done")
+            
+            backup.start()
+            loggerStart.info("Backup loop started successfully")
+            
+            loggerStart.info("All setup finish successfully")
+        except Exception as error:
+            loggerStart.exception("Error while starting up. Excepton {}".format(error))
+        setup_done = True
     
 
 def check_bot_still_in_server():
