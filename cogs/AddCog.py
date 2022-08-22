@@ -1,3 +1,4 @@
+import asyncio
 import discord
 from discord.commands import (  # Importing the decorator that makes slash commands.
     slash_command,
@@ -61,14 +62,19 @@ class AddCog(commands.Cog):
             return
         server = self.data.getServer(ctx.guild.id)
         server.timedRoleOfServer[role.id] = timedelta
-        for memberDiscord in ctx.guild.members:
-            if role in memberDiscord.roles:
-                self.data.addTimedRole(ctx.guild.id, memberDiscord.id, role.id, saveData=False, server=server)
-        self.data.saveData()
         embed = discord.Embed(
             title="Server time role added sucessfully !",
             description="The time role {} was added to the timed role of the server with a time delta of {}".format(role.mention, timedelta))
         await ctx.respond(embed=embed)
+        
+        # Adding a time role to all member who already have the role
+        for memberDiscord in ctx.guild.members:
+            if role in memberDiscord.roles:
+                self.data.addTimedRole(ctx.guild.id, memberDiscord.id, role.id, saveData=False, server=server)
+            # give the chance for a other process to run
+            asyncio.sleep(0)
+
+        self.data.saveData()
 
         
     @slash_command(guild_ids=guildIds, description="Manually add a timed role to a user")            

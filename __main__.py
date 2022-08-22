@@ -128,7 +128,9 @@ async def on_ready():
             timeChecker.start()
             loggerStart.info("Time checker loop started successfully")
             
-            if check_bot_still_in_server() or await check_for_member_changes():
+            saveData = check_bot_still_in_server()
+            saveData2 = await check_for_member_changes()
+            if saveData or saveData2:
                 data.saveData()
                 
             backup.backup_now(additional_info="_after_setup")
