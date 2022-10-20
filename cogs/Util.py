@@ -2,6 +2,7 @@ import logging
 import os
 import aiohttp
 import discord
+from discord.ext.commands import Bot
 from discord.ext import pages
 
 
@@ -44,7 +45,40 @@ def generate_pages(item_list, max_number_of_item_per_page, titles: str = "", foo
 def get_paginator(text: str, titles: str = "", footers: str = "", max_number_of_item_per_page=MAX_ITEM_PER_PAGES_DEFAULT):
     return pages.Paginator(pages=generate_pages(text.strip().split("\n"),
                                                 max_number_of_item_per_page, 
-                                                titles=titles, footers=footers))     
+                                                titles=titles, footers=footers))
+    
+async def get_or_fetch_role(guild: discord.Guild, role_id: int):
+        role_get = guild.get_role(role_id)
+        if role_get is None:
+            try:
+                role_get: discord.Role = await guild._fetch_role(role_id) 
+            except aiohttp.client_exceptions.ClientConnectorError:  # type: ignore
+                return (None, True)
+            except:
+                return (None, False)
+        return (role_get, False)
+    
+async def get_or_fetch_member(guild: discord.Guild, member_id: int):
+    member = guild.get_member(member_id)
+    if member is None:
+        try:
+            member = await guild.fetch_member(member_id)
+        except aiohttp.client_exceptions.ClientConnectorError:  # type: ignore
+            return (None, True)
+        except:
+            return (None, False)
+    return (member, False)
+
+async def get_or_fetch_guild(bot: Bot, guild_id: int):
+    guild = bot.get_guild(guild_id)
+    if guild is None:
+        try:
+            guild = await bot.fetch_guild(guild_id)
+        except aiohttp.client_exceptions.ClientConnectorError:  # type: ignore
+            return (None, True)
+        except:
+            return (None, False)
+    return (guild, False)
 
 async def get_member_from_id(guild: discord.Guild, memberId: int) -> discord.Member:
     global logger
@@ -59,7 +93,7 @@ async def get_member_from_id(guild: discord.Guild, memberId: int) -> discord.Mem
         except discord.errors.NotFound:
             # member no longer exist in that guild
             return None
-        except aiohttp.client_exceptions.ClientConnectorError:
+        except aiohttp.client_exceptions.ClientConnectorError:  # type: ignore
             retries_nb += 1
         except Exception:
             logger.exception("Unkown exception on with guild {} and memberId: {}".format(guild, memberId))

@@ -1,6 +1,5 @@
 import asyncio
 from datetime import datetime, timedelta
-from multiprocessing.pool import AsyncResult, ThreadPool
 import discord
 import os
 from discord.ext.commands.errors import MissingPermissions
@@ -11,29 +10,27 @@ from cogs.AddCog import AddCog
 from cogs.RemoveCog import RemoveCog
 from cogs.ShowCog import ShowCog
 from cogs.TimezoneCog import TimezoneCog
-from data import Data
 from discord.ext.commands import Bot
 import logging
+import database.database as database
 from constant import LOCAL_TIME_ZONE, TOKEN, guildIds
-from data_structure.TimedRole import TimedRole
 
 logging.Formatter.converter = lambda *args: datetime.now(tz=LOCAL_TIME_ZONE).timetuple()
 
 
 #logging
-logger = logging.getLogger("discord_commands")
+logger = logging.getLogger("commands")
 logger.setLevel(logging.ERROR)
 file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "logs", "commands.log")
 handler = logging.FileHandler(filename=file, encoding="utf-8", mode="w")
-handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+handler.setFormatter(logging.Formatter('%(asctime)s:%(message)s'))
 logger.addHandler(handler)
 
-loggerStart = logging.getLogger("discord_start")
+loggerStart = logging.getLogger("start")
 loggerStart.setLevel(logging.INFO)
-loggerStart
 file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "logs", "start.log")
 handler = logging.FileHandler(filename=file, encoding="utf-8", mode="w")
-handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+handler.setFormatter(logging.Formatter('%(asctime)s:%(message)s'))
 loggerStart.addHandler(handler)
 
 
@@ -42,98 +39,46 @@ intents.members = True
 intents.guilds = True
 
 bot: Bot = Bot(intents=intents)
-data = Data()
-timeChecker = RoleTimeOutChecker(data, bot)
-backup = BackupGenerator(data)
+timeChecker = RoleTimeOutChecker(bot)
+backup = BackupGenerator()
 
-bot.add_cog(TimezoneCog(bot, data))
-bot.add_cog(ShowCog(bot, data))
-bot.add_cog(RemoveCog(bot, data))
-bot.add_cog(AddCog(bot, data))
-
-@bot.event
-async def on_guild_join(guild: discord.Guild):
-    loggerStart.log(logging.INFO, "Bot just joined {}. The bot is now in {} guilds. Guilds: {}".format(guild.name, len(bot.guilds), bot.guilds))
-
-@bot.event
-async def on_guild_remove(guild: discord.Guild):
-    loggerStart.log(logging.INFO, "Bot just left {}. The bot is now in {} guilds. Guilds: {}".format(guild.name, len(bot.guilds), bot.guilds))
-    server = data.getServer(guild.id)
-    data.servers.remove(server)
-    data.saveData()
-
-@bot.event  
-async def on_guild_role_delete(role: discord.Role):
-    # No need to remove role from members, because the on_member_update event will be trigger for each member who lost the role
-    data.delete_time_role(role.id, role.guild.id, remove_role_in_members=False)
-    
-@bot.event     
-async def on_member_remove(member: discord.Member):
-    data.remove_member(member.id, member.guild.id)
+bot.add_cog(TimezoneCog(bot))
+bot.add_cog(ShowCog(bot))
+bot.add_cog(RemoveCog(bot))
+bot.add_cog(AddCog(bot))
 
 bot_start_time = None
 @bot.event
 async def on_connect():
     global bot_start_time
+    await database.create_database()
     bot_start_time = datetime.now(LOCAL_TIME_ZONE)
-    
-async def check_for_member_changes():
-    nb_role_added = 0
-    changes = False
-    max_time_given = timedelta(milliseconds=500)
-    last_check = datetime.now()
-    start_time = datetime.now(LOCAL_TIME_ZONE)
-    
-    for guild in bot.guilds:
-        server = data.getServer(guild.id)
-        for member_discord in guild.members:
-            member = data.getMember(member_discord.guild.id, member_discord.id, server=server)
-            for role in member_discord.roles:
-                if role.id in server.timedRoleOfServer:
-                    isIn = False
-                    pos = 0
-                    for timedRoleMember in member.timedRole:
-                        if timedRoleMember.roleId == role.id:
-                            isIn=True
-                            break
-                        pos += 1
-                    if not isIn:
-                        # member got a timed role while bot down
-                        member.timedRole.append(TimedRole(role.id, server.timedRoleOfServer[role.id]))
-                        changes = True
-                        nb_role_added += 1
-                # give other request time, and reduce core load on the server
-                if datetime.now() - last_check > max_time_given:
-                    await asyncio.sleep(0.2)
-                    last_check = datetime.now()
-                else:
-                    await asyncio.sleep(0)
-            await asyncio.sleep(0)
-    loggerStart.info("Changes in members setup finish. {} roles added after {}".format(
-        nb_role_added, datetime.now(LOCAL_TIME_ZONE) - start_time))
-    return changes
-    
+    if bot.auto_sync_commands:
+        await bot.sync_commands()
+        
 setup_done = False
 @bot.event
 async def on_ready():
     global bot_start_time
     global setup_done
     if not setup_done:
-        loggerStart.info("The bot started in {} ".format( datetime.now(LOCAL_TIME_ZONE) - bot_start_time))
-        print("We have logged in as {0.user}".format(bot))
-        backup.backup_now(additional_info="_before_setup")
-        loggerStart.info("Backup on start done")
-        loggerStart.info("Bot in {} guilds. Guilds: {}".format(len(bot.guilds), bot.guilds))
         try:
+            loggerStart.info("The bot started in {} ".format( datetime.now(LOCAL_TIME_ZONE) - bot_start_time))
+            print("We have logged in as {0.user}".format(bot))
+            
+            await backup.backup_now(additional_info="_before_setup")
+            loggerStart.info("Backup on start done")
+            
+            loggerStart.info("Bot in {} guilds. Guilds: {}".format(len(bot.guilds), bot.guilds))
+        
             timeChecker.start()
             loggerStart.info("Time checker loop started successfully")
             
-            saveData = check_bot_still_in_server()
-            saveData2 = await check_for_member_changes()
-            if saveData or saveData2:
-                data.saveData()
+            await check_bot_still_in_server()
+            # run in a other thread because is CPU heavy
+            await asyncio.to_thread(check_for_member_changes)
                 
-            backup.backup_now(additional_info="_after_setup")
+            await backup.backup_now(additional_info="_after_setup")
             loggerStart.info("Backup on setup finish done")
             
             backup.start()
@@ -143,25 +88,42 @@ async def on_ready():
         except Exception as error:
             loggerStart.exception("Error while starting up. Excepton {}".format(error))
         setup_done = True
-    
 
-def check_bot_still_in_server():
-    serversToDelete = []
-    guild_ids = set()
+def check_for_member_changes():
+    start_time = datetime.now(LOCAL_TIME_ZONE)
+    for member in bot.get_all_members():
+        for role in member.roles:
+            deltatime = database.get_time_role_deltatime_sync(role.id, member.guild.id)
+            if deltatime is not None:
+                deltatime = timedelta(seconds=deltatime)
+                database.insert_member_time_role_sync(role.id, deltatime, member.id, member.guild.id)
+
+    loggerStart.info("Changes in members setup finish. Took {}".format(datetime.now(LOCAL_TIME_ZONE) - start_time))
+
+async def check_bot_still_in_server():
     start_time = datetime.now()
-    for guild in bot.guilds:
-        guild_ids.add(guild.id)
-    
-    for server in data.servers:
-        if server.serverId not in guild_ids:
-            serversToDelete.append(server)
-            
-    for serverToDelete in serversToDelete:
-        data.servers.remove(serverToDelete)
-        
+    nb_guild_deleted = await database.remove_unused_guild(bot)
     loggerStart.log(logging.INFO, "Changes in guilds setup finish. {} Guild deleted after {}".format(
-        len(serversToDelete), datetime.now() - start_time))
-    return len(serversToDelete) != 0
+        nb_guild_deleted, datetime.now() - start_time))
+
+@bot.event
+async def on_guild_join(guild: discord.Guild):
+    loggerStart.log(logging.INFO, "Bot just joined {}. The bot is now in {} guilds.".format(guild, len(bot.guilds)))
+
+@bot.event
+async def on_guild_remove(guild: discord.Guild):
+    loggerStart.log(logging.INFO, "Bot just left {}. The bot is now in {} guilds.".format(guild, len(bot.guilds)))
+    await database.remove_guild(guild.id)
+    
+@bot.event  
+async def on_guild_role_delete(role: discord.Role):
+    # No need to remove role from members, because the on_member_update event will be trigger for each member who lost the role
+    await database.remove_global_time_role(role.id, role.guild.id)
+    await database.remove_server_time_role(role.id, role.guild.id)
+    
+@bot.event     
+async def on_member_remove(member: discord.Member):
+    await database.remove_member(member.id, member.guild.id)
       
 @bot.slash_command(guild_ids=guildIds, pass_context = True, description="Show help window")
 async def help(ctx):
@@ -183,34 +145,35 @@ async def on_member_update(before: discord.Member, after: discord.Member):
     added_roles = after_roles.difference(before_roles)
     
     for added_role in added_roles:
-        data.addTimedRole(after.guild.id, after.id, added_role.id, saveData=False)
+        deltatime = await database.get_time_role_deltatime(added_role.id, after.guild.id)
+        if deltatime is not None:
+            deltatime = timedelta(seconds=deltatime)
+            await database.insert_member_time_role(added_role.id, deltatime, after.id, after.guild.id)
         
     for deleted_role in deleted_roles:
-        member = data.getMember(after.guild.id, after.id)
-        i = 0
-        isIn = False
-        for timeRole in member.timedRole:
-            if timeRole.roleId == deleted_role.id:
-                isIn = True
-                break
-            i += 1
-        if isIn:
-            del member.timedRole[i]
+        await database.remove_member_time_role(deleted_role.id, after.id, after.guild.id)
         
-    if len(deleted_roles) != 0 or len(added_roles) != 0:
-        data.saveData()
     
 @bot.event
-async def on_application_command_error(ctx, error: Exception):
+async def on_application_command_error(ctx: discord.ApplicationContext, error: Exception):
     if isinstance(error, MissingPermissions):
         message = Message();
         message.addLine("Sorry {}, you do not have permissions to do that! You need to have manage_role permission".format(ctx.author.mention))
         embed = discord.Embed(title="Missing permissions", description=message.getString());
         await ctx.respond(embed=embed)
     else:
-        embed = discord.Embed(title="Unexpected error (this error will be log and look into)", description=error);
+        error_id = datetime.now(tz=LOCAL_TIME_ZONE).strftime("%Y%m%d%H%M%S") + str(ctx.guild.id) + str(ctx.author.id)
+        discord_message = """Your error code is {}
+        If you want support show that error code in the Support server: {}
+        Error: {}""".format(error_id, "https://discord.gg/hRTHpB4HUC", error)
+        embed = discord.Embed(title="Something went wrong", color=0xFF0000, description=discord_message);
+        embed.set_footer(text="If you wait to long, your error will be deleted from the logs")
         await ctx.respond(embed=embed)
-        logger.exception("On {} Exception: {}".format(ctx.guild, error))
+        message = """id -> {}
+        On guild {} by user {} 
+        On command {} with values {}
+        Error -> {}""".format(error_id, ctx.guild, ctx.author, ctx.command.name, ctx.selected_options, error)
+        logger.error(message)
 
         
 bot.run(TOKEN)

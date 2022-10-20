@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project name="time role db" id="Project-d77" database="Sqlite" >
+	<schema name="Default" >
+		<table name="Global_time_role" >
+			<column name="id" type="INTEGER" jt="4" mandatory="y" />
+			<column name="end_datetime" type="DATETIME" jt="93" mandatory="y" />
+			<column name="guild_id" type="INTEGER" jt="4" mandatory="y" />
+			<column name="delete_from_guild" type="BOOLEAN" jt="-7" mandatory="y" />
+			<index name="pk_Global_time_role" unique="PRIMARY_KEY" >
+				<column name="id" />
+				<column name="guild_id" />
+			</index>
+			<fk name="fk_global_time_role_guild" to_schema="Default" to_table="Guild" delete_action="cascade" >
+				<fk_column name="guild_id" pk="id" />
+			</fk>
+		</table>
+		<table name="Guild" >
+			<column name="id" type="INTEGER" jt="4" mandatory="y" />
+			<column name="timezone" type="TEXT" jt="-1" />
+			<index name="pk_Guild" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+		</table>
+		<table name="Member_time_role" prior="member_time_role" >
+			<column name="id" type="INTEGER" jt="4" mandatory="y" />
+			<column name="creation_time" type="DATETIME" jt="93" mandatory="y" >
+				<defo><![CDATA[CURRENT_TIMESTAMP]]></defo>
+			</column>
+			<column name="deltatime" type="TIME" jt="92" mandatory="y" />
+			<column name="member_id" type="INTEGER" jt="4" mandatory="y" />
+			<column name="guild_id" type="INTEGER" jt="4" mandatory="y" />
+			<index name="pk_Member_time_role" unique="PRIMARY_KEY" >
+				<column name="id" />
+				<column name="member_id" />
+				<column name="guild_id" />
+			</index>
+			<fk name="fk_member_time_role_guild" to_schema="Default" to_table="Guild" delete_action="cascade" >
+				<fk_column name="guild_id" pk="id" />
+			</fk>
+		</table>
+		<table name="Time_role" >
+			<column name="id" type="INTEGER" jt="4" mandatory="y" />
+			<column name="guild_id" type="INTEGER" jt="4" mandatory="y" />
+			<column name="deltatime" type="TIME" jt="92" mandatory="y" />
+			<index name="pk_Time_role" unique="PRIMARY_KEY" >
+				<column name="id" />
+				<column name="guild_id" />
+			</index>
+			<fk name="fk_time_role_guild" to_schema="Default" to_table="Guild" delete_action="cascade" >
+				<fk_column name="guild_id" pk="id" />
+			</fk>
+		</table>
+	</schema>
+	<connector name="Sqlite" database="Sqlite" driver_class="org.sqlite.JDBC" driver_jar="sqlite-jdbc-3.36.0.3.jar" driver_desc="Standard" host="localhost" port="7210" instance="D:/Documents/Ecole/bot discord/timed_role/database.db" useSystemProxy="false" />
+	<layout name="Default Layout" id="Layout-1da3" show_relation="columns" >
+		<entity schema="Default" name="Global_time_role" color="C1D8EE" x="48" y="320" />
+		<entity schema="Default" name="Guild" color="C1D8EE" x="80" y="48" />
+		<entity schema="Default" name="Member_time_role" color="C1D8EE" x="352" y="64" />
+		<entity schema="Default" name="Time_role" color="C1D8EE" x="320" y="304" />
+		<script name="SQL_Editor" id="Editor-ea2" language="SQL" >
+			<string><![CDATA[CREATE TABLE Global_time_role ( 
+	id                   INTEGER NOT NULL    ,
+	end_datetime         DATETIME NOT NULL    ,
+	guild_id             INTEGER NOT NULL    ,
+	CONSTRAINT pk_Global_time_role PRIMARY KEY ( id, guild_id )
+ ) ;
+
+CREATE TABLE Guild ( 
+	id                   INTEGER NOT NULL  PRIMARY KEY  ,
+	timezone             TEXT NOT NULL    
+ ) ;
+
+CREATE TABLE Member ( 
+	id                   INTEGER NOT NULL    ,
+	guild_id             INTEGER NOT NULL    ,
+	CONSTRAINT pk_Member PRIMARY KEY ( id, guild_id ),
+	CONSTRAINT unq_Member_id UNIQUE ( id )
+ ) ;
+
+CREATE TABLE Member_time_role ( 
+	id                   INTEGER NOT NULL    ,
+	creation_time        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP   ,
+	deltatime            TIME NOT NULL    ,
+	member_id            INTEGER NOT NULL    ,
+	CONSTRAINT pk_member_time_role PRIMARY KEY ( id, member_id )
+ ) ;
+]]></string>
+		</script>
+		<script name="SQL_Editor_001" id="Editor-3ac" language="SQL" >
+			<string><![CDATA[CREATE TABLE Guild ( 
+	id                   INTEGER NOT NULL  PRIMARY KEY  ,
+	timezone             TEXT NOT NULL    
+ );
+
+CREATE TABLE Member ( 
+	id                   INTEGER NOT NULL    ,
+	guild_id             INTEGER NOT NULL    ,
+	CONSTRAINT pk_Member PRIMARY KEY ( id, guild_id ),
+	CONSTRAINT unq_Member_id UNIQUE ( id ),
+	CONSTRAINT unq_Member_guild_id UNIQUE ( guild_id ),
+	FOREIGN KEY ( guild_id ) REFERENCES Guild( id )  
+ );
+
+CREATE TABLE Member_time_role ( 
+	id                   INTEGER NOT NULL    ,
+	creation_time        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP   ,
+	deltatime            TIME NOT NULL    ,
+	member_id            INTEGER NOT NULL    ,
+	CONSTRAINT pk_member_time_role PRIMARY KEY ( id, member_id ),
+	FOREIGN KEY ( member_id ) REFERENCES Member( guild_id )  
+ );
+
+CREATE TABLE Global_time_role ( 
+	id                   INTEGER NOT NULL    ,
+	end_datetime         DATETIME NOT NULL    ,
+	guild_id             INTEGER NOT NULL    ,
+	CONSTRAINT pk_Global_time_role PRIMARY KEY ( id, guild_id ),
+	FOREIGN KEY ( guild_id ) REFERENCES Guild( id ) ON DELETE CASCADE 
+ );
+]]></string>
+		</script>
+		<script name="SQL_Editor_002" id="Editor-2522" language="SQL" >
+			<string><![CDATA[CREATE TABLE Guild ( 
+	id                   INTEGER NOT NULL  PRIMARY KEY  ,
+	timezone             TEXT NOT NULL    
+ );
+
+CREATE TABLE Member ( 
+	id                   INTEGER NOT NULL  PRIMARY KEY  ,
+	guild_id             INTEGER NOT NULL    ,
+	discord_id           INTEGER NOT NULL    ,
+	FOREIGN KEY ( guild_id ) REFERENCES Guild( id ) ON DELETE CASCADE 
+ );
+
+CREATE TABLE Member_time_role ( 
+	id                   INTEGER NOT NULL    ,
+	creation_time        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP   ,
+	deltatime            TIME NOT NULL    ,
+	member_id            INTEGER NOT NULL    ,
+	CONSTRAINT pk_member_time_role PRIMARY KEY ( id, member_id ),
+	FOREIGN KEY ( member_id ) REFERENCES Member( id ) ON DELETE CASCADE 
+ );
+
+CREATE TABLE Global_time_role ( 
+	id                   INTEGER NOT NULL    ,
+	end_datetime         DATETIME NOT NULL    ,
+	guild_id             INTEGER NOT NULL    ,
+	CONSTRAINT pk_Global_time_role PRIMARY KEY ( id, guild_id ),
+	FOREIGN KEY ( guild_id ) REFERENCES Guild( id ) ON DELETE CASCADE 
+ );]]></string>
+		</script>
+		<script name="SQL_Editor_003" id="Editor-23a3" language="SQL" >
+			<string><![CDATA[CREATE TABLE Guild ( 
+	id                   INTEGER NOT NULL  PRIMARY KEY  ,
+	timezone             TEXT NOT NULL    
+ );
+
+CREATE TABLE Member ( 
+	guild_id             INTEGER NOT NULL    ,
+	id                   INTEGER NOT NULL    ,
+	CONSTRAINT pk_Member PRIMARY KEY ( guild_id, id ),
+	CONSTRAINT unq_Member_id UNIQUE ( id, guild_id ),
+	FOREIGN KEY ( guild_id ) REFERENCES Guild( id ) ON DELETE CASCADE 
+ );
+
+CREATE TABLE Member_time_role ( 
+	id                   INTEGER NOT NULL    ,
+	creation_time        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP   ,
+	deltatime            TIME NOT NULL    ,
+	member_id            INTEGER NOT NULL    ,
+	guild_id             INTEGER NOT NULL    ,
+	CONSTRAINT pk_Member_time_role PRIMARY KEY ( id, member_id, guild_id ),
+	FOREIGN KEY ( member_id, guild_id ) REFERENCES Member( id, guild_id ) ON DELETE CASCADE 
+ );
+
+CREATE TABLE Global_time_role ( 
+	id                   INTEGER NOT NULL    ,
+	end_datetime         DATETIME NOT NULL    ,
+	guild_id             INTEGER NOT NULL    ,
+	CONSTRAINT pk_Global_time_role PRIMARY KEY ( id, guild_id ),
+	FOREIGN KEY ( guild_id ) REFERENCES Guild( id ) ON DELETE CASCADE 
+ );]]></string>
+		</script>
+	</layout>
+</project>

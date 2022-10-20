@@ -4,27 +4,27 @@ from discord.commands import (  # Importing the decorator that makes slash comma
 )
 from discord.ext import commands
 from constant import guildIds
-from data import Data
+import database.database as database
 
 class RemoveCog(commands.Cog):
-    def __init__(self, bot, data: Data):
+    def __init__(self, bot):
         self.bot = bot
-        self.data = data
         
     @slash_command(guild_ids=guildIds, description="Remove a timed role of your server")     
     @discord.default_permissions(manage_roles=True)
     async def remove_timed_role_from_server(self, ctx: discord.ApplicationContext,
                                             role: discord.Option(discord.Role, "The time role to be remove from your server")):
         await ctx.defer()
-        server = self.data.getServer(ctx.guild.id)
-        if role.id in server.timedRoleOfServer:
-            self.data.delete_time_role(role.id, ctx.guild.id, server=server, remove_global=False)
+        is_in = await database.is_time_role_in_database(role.id, ctx.guild_id)
+        if is_in:
+            await database.remove_server_time_role(role.id, ctx.guild_id)
             embed = discord.Embed(title="Remove successfull",
                                   description="The role {} was removed from the time role of the server !".format(role.mention))
             await ctx.respond(embed=embed)
         else:
             embed = discord.Embed(
                 title="Remove failed",
+                color=0xFF0000,
                 description="The time Role {} is not a server time role. run /show_timed_role_of_server to check what server timed role you have".format(role.mention))
             await ctx.respond(embed=embed)
 
@@ -33,15 +33,19 @@ class RemoveCog(commands.Cog):
     async def remove_global_timed_role(self, ctx: discord.ApplicationContext,
                                        role: discord.Option(discord.Role, "The global time role to be remove from your server")):
         await ctx.defer()
-        if self.data.delete_time_role(role.id, ctx.guild.id, remove_server=False, remove_role_in_members=False):
+        is_in = await database.is_global_time_role_in_database(role.id, ctx.guild_id)
+        if is_in:
+            await database.remove_global_time_role(role.id, ctx.guild_id)
             embed = discord.Embed(title="Remove successfull",
                                   description="The global role {} was removed from the global timed role of the server !".format(role.mention))
             await ctx.respond(embed=embed)
         else:
             embed = discord.Embed(
                 title="Remove failed",
+                color=0xFF0000,
                 description="The global time Role {} is not a global time role. run /show_timed_role_of_server to check what global timed role you have".format(role.mention))
             await ctx.respond(embed=embed)
+
 
     @slash_command(guild_ids=guildIds, description="Remove a timed role from a user (not global time role)")      
     @discord.default_permissions(manage_roles=True)
@@ -51,28 +55,15 @@ class RemoveCog(commands.Cog):
         if role not in member.roles:
             embed = discord.Embed(
                 title="Remove failed",
+                color=0xFF0000,
                 description="The user {} does not have the role {}".format(member.mention, role.mention))
             await ctx.respond(embed=embed)
             return
-        server = self.data.getServer(member.guild.id)
-        memberData = self.data.getMember(member.guild.id, member.id, server=server)
-        if role.id in server.timedRoleOfServer:
-            await member.remove_roles(role)
-            embed = discord.Embed(
-                title="Remove Sucess",
-                description="The time role {} was removed from the user {}".format(role.mention, member.mention))
-            await ctx.respond(embed=embed)
-            return
-        i = 0
-        isIn = False
-        for timeRole in memberData.timedRole:
-            if timeRole.roleId == role.id:
-                isIn = True
-                break
-            i += 1
+        
+        isIn = await database.is_member_time_role_in_database(role.id, member.id, ctx.guild_id)
+
         if isIn:
-            del memberData.timedRole[i]
-            self.data.saveData()
+            await database.remove_member_time_role(role.id, member.id, ctx.guild_id)
             await member.remove_roles(role)
             embed = discord.Embed(
             title="Remove Sucess",
@@ -81,5 +72,6 @@ class RemoveCog(commands.Cog):
         else:
             embed = discord.Embed(
             title="Remove failed",
+            color=0xFF0000,
             description="The user {} does not have the time role {}".format(member.mention, role.mention))
             await ctx.respond(embed=embed)

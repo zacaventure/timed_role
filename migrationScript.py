@@ -1,40 +1,36 @@
-import datetime
+import asyncio
+import database.database as database
 from data import Data
 from data_structure.GlobalTimeRole import GlobalTimedRole
 from data_structure.Server import Server
+from data_structure.Member import Member
 from data_structure.TimedRole import TimedRole
+
+
 data = Data()
 
-newServers = []
-for server in data.servers:
-    newGlobal = []
-    for globalRole in server.globalTimeRoles:
-        globalRoleNew = GlobalTimedRole(globalRole.roleId, globalRole.endDate)
-        newGlobal.append(globalRoleNew)
-    newTimeRoles = {}
-    for timeRole, numberOfDays in server.timedRoleOfServer.items():
-        newTimeRoles[timeRole] = datetime.timedelta(days=numberOfDays)
-    server.globalTimeRoles = newGlobal
-    newServer = Server(server.serverId)
-    newServer.members = server.members
-    newServer.timedRoleOfServer = newTimeRoles
-    newServer.globalTimeRoles = server.globalTimeRoles
-    newServer.timezone = server.timezone
-    for member in server.members:
-        newMemberTimeRoles = []
-        for timeRole in member.timedRole:
-            try:
-                newMemberTimeRole = TimedRole(timeRole.roleId, datetime.timedelta(days=timeRole.numberOfDaysToKeep))
-                newMemberTimeRole.addedTime = timeRole.addedTime
-                newMemberTimeRoles.append(newMemberTimeRole)
-            except:
-                newMemberTimeRole = TimedRole(timeRole.roleId, datetime.timedelta(days=timeRole.timeToKeep))
-                newMemberTimeRole.addedTime = timeRole.addedTime
-                newMemberTimeRoles.append(newMemberTimeRole)
-        member.timedRole = newMemberTimeRoles
-    newServers.append(newServer)
-    
-data.servers = newServers
-
-print("Migration Script completed !")
-data.saveData()
+async def migration():
+    i = 1
+    for guild in data.servers:
+        guild: Server
+        timezone = None
+        if guild.timezone is not None:
+            timezone = str(guild.timezone)
+        await database.insert_if_not_exist_guild(guild.serverId, timezone)
+        for server_time_role_id, server_time_role in guild.timedRoleOfServer.items():
+            server_time_role: TimedRole
+            await database.insert_time_role(server_time_role.roleId, server_time_role.timeToKeep, guild.serverId)
+        for global_time_role in guild.globalTimeRoles:
+            global_time_role: GlobalTimedRole
+            await database.insert_global_time_role(global_time_role.roleId, global_time_role.endDate, guild.serverId, True)
+        for member in guild.members:
+            member: Member
+            for role in member.timedRole:
+                role: TimedRole
+                await database.insert_member_time_role(role.roleId, role.timeToKeep, member.memberId,
+                                                       guild.serverId, creation_time=role.addedTime)
+        print("{}/{} completed".format(i, len(data.servers)))
+        i += 1
+        
+asyncio.run(migration())
+print("migration script complete")

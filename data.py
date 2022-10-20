@@ -1,7 +1,6 @@
 import datetime
 import logging
 
-import discord
 from data_structure.Member import Member
 from data_structure.Server import Server
 import pickle
