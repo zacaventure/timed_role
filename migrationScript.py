@@ -17,9 +17,8 @@ async def migration():
         if guild.timezone is not None:
             timezone = str(guild.timezone)
         await database.insert_if_not_exist_guild(guild.serverId, timezone)
-        for server_time_role_id, server_time_role in guild.timedRoleOfServer.items():
-            server_time_role: TimedRole
-            await database.insert_time_role(server_time_role.roleId, server_time_role.timeToKeep, guild.serverId)
+        for server_time_role_id, server_time_role_timedelta in guild.timedRoleOfServer.items():
+            await database.insert_time_role(server_time_role_id, server_time_role_timedelta, guild.serverId)
         for global_time_role in guild.globalTimeRoles:
             global_time_role: GlobalTimedRole
             await database.insert_global_time_role(global_time_role.roleId, global_time_role.endDate, guild.serverId, True)
