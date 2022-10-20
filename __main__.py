@@ -13,22 +13,24 @@ from cogs.TimezoneCog import TimezoneCog
 from discord.ext.commands import Bot
 import logging
 import database.database as database
-from constant import LOCAL_TIME_ZONE, TOKEN, guildIds
+from constant import LOCAL_TIME_ZONE, TOKEN, LOG_DIR_PATH, guildIds
 
 logging.Formatter.converter = lambda *args: datetime.now(tz=LOCAL_TIME_ZONE).timetuple()
 
+if not os.path.exists(LOG_DIR_PATH):
+    os.mkdir(LOG_DIR_PATH)
 
 #logging
 logger = logging.getLogger("commands")
 logger.setLevel(logging.ERROR)
-file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "logs", "commands.log")
+file = os.path.join(LOG_DIR_PATH, "commands.log")
 handler = logging.FileHandler(filename=file, encoding="utf-8", mode="w")
 handler.setFormatter(logging.Formatter('%(asctime)s:%(message)s'))
 logger.addHandler(handler)
 
 loggerStart = logging.getLogger("start")
 loggerStart.setLevel(logging.INFO)
-file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "logs", "start.log")
+file = os.path.join(LOG_DIR_PATH, "start.log")
 handler = logging.FileHandler(filename=file, encoding="utf-8", mode="w")
 handler.setFormatter(logging.Formatter('%(asctime)s:%(message)s'))
 loggerStart.addHandler(handler)

@@ -14,6 +14,8 @@ MAX_ITEM_PER_PAGES_DEFAULT = 12
 
 datetime_strptime = "%Y-%m-%d %H:%M:%S"
 
+LOG_DIR_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "logs")
+
 default_database = "time_role.db"
 DATABASE = os.getenv("DATABASE_FILE")
 if DATABASE is None:
