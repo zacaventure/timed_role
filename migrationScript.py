@@ -10,6 +10,7 @@ from data_structure.TimedRole import TimedRole
 data = Data()
 
 async def migration():
+    await database.create_database()
     i = 1
     for guild in data.servers:
         guild: Server
@@ -30,6 +31,6 @@ async def migration():
                                                        guild.serverId, creation_time=role.addedTime)
         print("{}/{} completed".format(i, len(data.servers)))
         i += 1
-        
+  
 asyncio.run(migration())
 print("migration script complete")
