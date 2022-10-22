@@ -94,7 +94,7 @@ async def insert_all_member_time_role(member_time_role_list) -> None:
         await db.commit()
     
 async def insert_or_update_member_time_role(role_id: int, deltatime: timedelta, 
-                                  member_id: int, guild_id: int) -> float |  None:
+                                  member_id: int, guild_id: int) -> float:
     
     insert_member_time_role_querry = """
     INSERT OR IGNORE INTO Member_time_role (id, creation_time, deltatime, member_id, guild_id)
@@ -207,7 +207,7 @@ async def _execute_in_database(querry: str, data=None) -> None:
         await db.execute(querry, data)
         await db.commit()
         
-async def _get_first_in_database(querry: str, data=None) ->  aiosqlite.Row | None:
+async def _get_first_in_database(querry: str, data=None) ->  aiosqlite.Row:
     async with aiosqlite.connect(DATABASE) as db:
         async with db.execute(querry, data) as cursor:
             cursor: aiosqlite.Cursor
