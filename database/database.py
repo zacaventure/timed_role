@@ -18,7 +18,8 @@ WHERE id = {} AND member_id = {} AND guild_id = {} ;"""
 
 async def create_database():
     database_str = None
-    with open(os.path.join("database", "create_database.sql"), "r") as file:
+    database_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "create_database.sql")
+    with open(database_path, "r") as file:
         database_str = file.read()
      
     async with aiosqlite.connect(DATABASE) as db:

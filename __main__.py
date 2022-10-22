@@ -49,7 +49,7 @@ bot.add_cog(ShowCog(bot))
 bot.add_cog(RemoveCog(bot))
 bot.add_cog(AddCog(bot))
 
-bot_start_time = bot_start_time = datetime.now(LOCAL_TIME_ZONE)
+bot_start_time = datetime.now(LOCAL_TIME_ZONE)
         
 setup_done = False
 @bot.event
