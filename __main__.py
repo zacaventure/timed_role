@@ -49,14 +49,7 @@ bot.add_cog(ShowCog(bot))
 bot.add_cog(RemoveCog(bot))
 bot.add_cog(AddCog(bot))
 
-bot_start_time = None
-@bot.event
-async def on_connect():
-    global bot_start_time
-    await database.create_database()
-    bot_start_time = datetime.now(LOCAL_TIME_ZONE)
-    if bot.auto_sync_commands:
-        await bot.sync_commands()
+bot_start_time = bot_start_time = datetime.now(LOCAL_TIME_ZONE)
         
 setup_done = False
 @bot.event
@@ -67,6 +60,7 @@ async def on_ready():
         try:
             loggerStart.info("The bot started in {} ".format( datetime.now(LOCAL_TIME_ZONE) - bot_start_time))
             print("We have logged in as {0.user}".format(bot))
+            await database.create_database()
             
             await backup.backup_now(additional_info="_before_setup")
             loggerStart.info("Backup on start done")
