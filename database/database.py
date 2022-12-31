@@ -466,6 +466,7 @@ class Database:
     
     async def backup(self, file: str):
         async with aiosqlite.connect(file) as db_backup:
+            await self.commit()
             await self.connection.backup(db_backup)
           
     async def close(self) -> None:

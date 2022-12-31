@@ -37,4 +37,5 @@ class BackupGenerator(commands.Cog):
 
     @tasks.loop(hours=5)
     async def backup_loop(self) -> None:
-        await self.backup_now()
+        # await self.backup_now()
+        pass
