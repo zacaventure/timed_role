@@ -2,7 +2,6 @@ import logging
 import os
 import aiohttp
 import discord
-from discord.ext.commands import Bot
 from discord.ext import pages
 
 
@@ -46,39 +45,6 @@ def get_paginator(text: str, titles: str = "", footers: str = "", max_number_of_
     return pages.Paginator(pages=generate_pages(text.strip().split("\n"),
                                                 max_number_of_item_per_page, 
                                                 titles=titles, footers=footers))
-    
-async def get_or_fetch_role(guild: discord.Guild, role_id: int):
-        role_get = guild.get_role(role_id)
-        if role_get is None:
-            try:
-                role_get: discord.Role = await guild._fetch_role(role_id) 
-            except aiohttp.client_exceptions.ClientConnectorError:  # type: ignore
-                return (None, True)
-            except:
-                return (None, False)
-        return (role_get, False)
-    
-async def get_or_fetch_member(guild: discord.Guild, member_id: int):
-    member = guild.get_member(member_id)
-    if member is None:
-        try:
-            member = await guild.fetch_member(member_id)
-        except aiohttp.client_exceptions.ClientConnectorError:  # type: ignore
-            return (None, True)
-        except:
-            return (None, False)
-    return (member, False)
-
-async def get_or_fetch_guild(bot: Bot, guild_id: int):
-    guild = bot.get_guild(guild_id)
-    if guild is None:
-        try:
-            guild = await bot.fetch_guild(guild_id)
-        except aiohttp.client_exceptions.ClientConnectorError:  # type: ignore
-            return (None, True)
-        except:
-            return (None, False)
-    return (guild, False)
 
 async def get_member_from_id(guild: discord.Guild, memberId: int) -> discord.Member:
     global logger
@@ -105,6 +71,23 @@ sites = [
     "https://www.amazon.ca/-/fr/",
     "https://www.facebook.com/"
 ]
+
+sites2 = [
+    "8.8.8.8"
+]
+
+import http.client as httplib
+def have_internet() -> bool:
+    for site in sites2:
+        conn = httplib.HTTPSConnection(site, timeout=5)
+        try:
+            conn.request("HEAD", "/")
+            return True
+        except Exception:
+            continue
+        finally:
+            conn.close()
+    return False
         
 async def is_connected_to_internet():
     async with aiohttp.ClientSession() as session:

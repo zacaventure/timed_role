@@ -1,33 +1,28 @@
 import asyncio
-from constant import datetime_strptime
+import sqlite3
+from cogs.WriteCog import WriteCog
+from constant import DATABASE, datetime_strptime
 from typing import List
 import discord
-from discord.commands import (  # Importing the decorator that makes slash commands.
-    slash_command,
-)
-from discord.ext import commands
+from discord.commands import slash_command
 from constant import guildIds
 import datetime
-from discord.ext.commands import Bot
-import database.database as database
 import pytz
 
-def add_member_time_role_to_member(members: List[discord.Member], role: discord.Role, timedelta, guild_id):
-        # Adding a time role to all member who already have the role
-        for memberDiscord in members:
-            if role in memberDiscord.roles:
-                database.insert_member_time_role_sync(
-                    role.id, timedelta,  memberDiscord.id, guild_id)
-
-class AddCog(commands.Cog):
-    def __init__(self, bot: Bot):
-        self.bot: Bot = bot
-        
-    def canTheBotHandleTheRole(self, ctx: discord.ApplicationContext, role: discord.Role) -> bool:
-        myBot: discord.Member = ctx.guild.get_member(self.bot.user.id)
-        if myBot.top_role.position > role.position:
-            return True
-        return False
+class AddCog(WriteCog):
+    def __init__(self, bot):
+        super().__init__(bot)
+    
+    def add_member_time_role_to_member(self, members: List[discord.Member], role: discord.Role, timedelta: datetime.timedelta, guild_id):
+            # Adding a time role to all member who already have the role
+            inserts = []
+            with sqlite3.connect(DATABASE) as db:
+                for memberDiscord in members:
+                    if role in memberDiscord.roles:
+                        if not self.database.is_member_time_role_in_database_sync(db, role.id, memberDiscord.id, guild_id):
+                            inserts.append((role.id, datetime.datetime.now().strftime(datetime_strptime), 
+                                            timedelta.total_seconds(), memberDiscord.id, guild_id))
+            return inserts
 
     @slash_command(guild_ids=guildIds, description="Add a new global time role with a expiration date.")    
     @discord.default_permissions(manage_roles=True)
@@ -42,14 +37,28 @@ class AddCog(commands.Cog):
         if not self.canTheBotHandleTheRole(ctx, role):
             await ctx.respond("That role {} is higher than the highest role of the bot timed_role. The bot cannot manipulate that role. Please change the role order if you want to create a timed role".format(role.mention))
             return
-        timezone = await database.get_timezone(ctx.guild_id)
+        timezone = await self.database.get_timezone(ctx.guild_id)
+        now = datetime.datetime.now()
         if timezone is None:
             end_datatime = datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute)
         else:
+            now = datetime.datetime.now(tz=pytz.timezone(timezone))
             end_datatime = datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute, tzinfo=pytz.timezone(timezone))
-        previous_datetime = await database.insert_global_time_role(role.id, end_datatime, 
-                                                                   ctx.guild_id, True)
+        
+        if end_datatime.strftime(datetime_strptime) < now.strftime(datetime_strptime):
+            timezone_str = " with no timezone set"
+            if timezone is not None:
+                timezone_str = f" in {timezone}"
+            embed = discord.Embed(
+                title="Invalid end datetime",
+                color=0xFF0000,
+                description=f"The end date {end_datatime.strftime(datetime_strptime)} is in the past. \nCurrent date: {now.strftime(datetime_strptime)} {timezone_str}")
+            embed.set_footer(text="Remember to verify the timezone of your serveur")
+            await ctx.respond(embed=embed)
+            return
         embed = None
+        previous_datetime = await self.database.insert_or_update_global_time_role(role.id, end_datatime, 
+                                                                   ctx.guild_id, True)
         if previous_datetime is not None:
             embed = discord.Embed(
                 title="Global time role added updated !",
@@ -60,6 +69,7 @@ class AddCog(commands.Cog):
                 title="Global time role added sucessfully !",
                 description="The time role {} was added to the global timed role of the server with a expiration date of **{}**".format(
                     role.mention, end_datatime.strftime(datetime_strptime)))
+        await self.database.commit()
         await ctx.respond(embed=embed)
     
 
@@ -75,13 +85,13 @@ class AddCog(commands.Cog):
         if not self.canTheBotHandleTheRole(ctx, role):
             await ctx.respond("That role {} is higher than the highest role of the bot timed_role. The bot cannot manipulate that role. Please change the role order if you want to create a timed role".format(role.mention))
             return
-        previous_deltime = await database.insert_time_role(role.id, timedelta, ctx.guild_id)
+        previous_deltime = await self.database.insert_or_update_time_role(role.id, timedelta, ctx.guild_id)
         embed = None
         if previous_deltime is not None:
             description="""The time role {} with a deltatime of {} was updated to {}
             *Note: All member getting the role {} will now only have the role for {}*""".format(
                 role.mention,
-                datetime.timedelta(seconds=previous_deltime),
+                previous_deltime,
                 timedelta,
                 role.mention,
                 timedelta
@@ -103,7 +113,11 @@ class AddCog(commands.Cog):
         
         if add_to_existing_members:
             # run in a other thread because can be CPU heavy when big guilds
-            await asyncio.to_thread(add_member_time_role_to_member, ctx.guild.members, role, timedelta, ctx.guild_id)
+            inserts = await asyncio.to_thread(self.add_member_time_role_to_member, ctx.guild.members, role, timedelta, ctx.guild_id)
+            if len(inserts) > 0:
+                await self.database.insert_all_member_time_role(inserts)
+
+        await self.database.commit()
 
    
     @slash_command(guild_ids=guildIds, description="Manually add a timed role to a user")            
@@ -115,13 +129,15 @@ class AddCog(commands.Cog):
                                     hours : discord.Option(int, "The number of hours days before the role expire (is adding time on top of days)", min_value=0, default=0), 
                                     minutes : discord.Option(int, "The number of minutes days before the role expire (is adding time on top of days and hours)", min_value=0, default=0)):
         await ctx.defer()
-        member: discord.Member
+        if not isinstance(member, discord.Member):
+            await ctx.respond(f"That user is not in your guild anymore (but can still be in your cache)")
+            return
         if not self.canTheBotHandleTheRole(ctx, role):
             await ctx.respond("That role {} is higher than the highest role of the bot timed_role. The bot cannot manipulate that role. Please change the role order if you want to create a timed role".format(role.mention))
             return
         timedelta = datetime.timedelta(days=days, hours=hours, minutes=minutes)
-        await database.insert_if_not_exist_guild(ctx.guild_id)
-        previous_timedelta_seconds  = await database.insert_or_update_member_time_role(role.id, timedelta, member.id, ctx.guild_id)
+        await self.database.insert_if_not_exist_guild(ctx.guild_id)
+        previous_timedelta_seconds  = await self.database.insert_or_update_member_time_role(role.id, timedelta, member.id, ctx.guild_id)
         if role not in member.roles:
             await member.add_roles(role)
                 
@@ -133,4 +149,5 @@ class AddCog(commands.Cog):
         else:
             embed = discord.Embed(title="Already have that time role", description="{} already has {} as a time role. The user now have {} left ! (updated the expiration time from {})".format(
                 member.mention, role.mention, timedelta, datetime.timedelta(seconds=previous_timedelta_seconds)))
-            await ctx.respond(embed=embed) 
+            await ctx.respond(embed=embed)
+        await self.database.commit()

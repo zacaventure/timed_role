@@ -1,34 +1,35 @@
-import discord
-from discord.commands import (  # Importing the decorator that makes slash commands.
-    slash_command,
-)
+from discord import ApplicationContext, Role, Option, Member, Embed
+from discord.commands import slash_command
 from discord.ext import commands
+from discord.utils import get
+
 from cogs.Util import get_paginator
 from constant import guildIds, datetime_strptime
-from discord.utils import get
-import database.database as database
 import datetime
 import pytz
+
+from database.database import Database
 
 
 class ShowCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.database: Database = self.bot.database
 
     @slash_command(guild_ids=guildIds, description="Show all the individual and global timed role of your server")
-    async def show_timed_role_of_server(self, ctx: discord.ApplicationContext):
+    async def show_timed_role_of_server(self, ctx: ApplicationContext):
         await ctx.defer(ephemeral=True)
         
-        server_time_roles = await database.get_all_server_time_roles(ctx.guild_id)
+        server_time_roles = await self.database.get_all_server_time_roles(ctx.guild_id)
         server_time_roles.sort(key=lambda x: x[1]) # Sort with expiration days
                 
         value_server=""
         i = 1
         for roleId, timedelta_s in server_time_roles:
-            role_get: discord.Role = ctx.guild.get_role(roleId)
+            role_get: Role = ctx.guild.get_role(roleId)
             if role_get is None:
                 try:
-                    role_get: discord.Role = await ctx.guild._fetch_role(roleId)
+                    role_get: Role = await ctx.guild._fetch_role(roleId)
                 except:
                     pass
             timedelta = datetime.timedelta(seconds=timedelta_s)
@@ -42,14 +43,14 @@ class ShowCog(commands.Cog):
         
         value_global=""
         i = 1
-        global_time_roles = await database.get_all_global_time_roles(ctx.guild_id)
-        timezone = await database.get_timezone(ctx.guild_id)
+        global_time_roles = await self.database.get_all_global_time_roles(ctx.guild_id)
+        timezone = await self.database.get_timezone(ctx.guild_id)
         global_time_roles.sort(key=lambda x: x[1]) # Sort with end date
         for id, end_datetime in global_time_roles:
-            role_get: discord.Role = ctx.guild.get_role(id)
+            role_get: Role = ctx.guild.get_role(id)
             if role_get is None:
                 try:
-                    role_get: discord.Role = await ctx.guild._fetch_role(id)
+                    role_get: Role = await ctx.guild._fetch_role(id)
                 except:
                     pass
             if role_get is not None:
@@ -68,11 +69,11 @@ class ShowCog(commands.Cog):
         await paginator_global.respond(ctx.interaction, ephemeral=True)
         
     @slash_command(guild_ids=guildIds, description="Show all the individual and global timed role of a member")
-    async def show_timed_role_of_member(self, ctx: discord.ApplicationContext,
-                                        member: discord.Option(discord.Member, "The member which roles will be show")):
+    async def show_timed_role_of_member(self, ctx: ApplicationContext,
+                                        member: Option(Member, "The member which roles will be show")):
         await ctx.defer(ephemeral=True)
-       
-        member_time_roles = await database.get_member_time_role(member.id, ctx.guild_id)
+
+        member_time_roles = await self.database.get_member_time_role(member.id, ctx.guild_id)
         remaining_time = []
         for member_time_role in member_time_roles:
             start_time = datetime.datetime.strptime(member_time_role[1].strip(), datetime_strptime)
@@ -91,16 +92,16 @@ class ShowCog(commands.Cog):
         paginator_server = get_paginator(value, titles="Timed role of {}".format(member.name))
         
         
-        global_time_roles = await database.get_all_global_time_roles(ctx.guild_id)
+        global_time_roles = await self.database.get_all_global_time_roles(ctx.guild_id)
         global_time_roles.sort(key=lambda x: x[1]) # Sort with end date
-        timezone = await database.get_timezone(ctx.guild_id)
+        timezone = await self.database.get_timezone(ctx.guild_id)
         value=""
         i = 1
         for id, end_datetime in global_time_roles:
-            role_get: discord.Role = ctx.guild.get_role(id)
+            role_get: Role = ctx.guild.get_role(id)
             if role_get is None:
                 try:
-                    role_get: discord.Role = await ctx.guild._fetch_role(id)
+                    role_get: Role = await ctx.guild._fetch_role(id)
                 except:
                     pass
             if role_get in member.roles and role_get is not None:
@@ -116,9 +117,9 @@ class ShowCog(commands.Cog):
         await paginator_server.respond(ctx.interaction, ephemeral=True)
         await paginator_global.respond(ctx.interaction, ephemeral=True)
         
-    async def send_member_time_role_response(self, role: discord.Role, ctx,
+    async def send_member_time_role_response(self, role: Role, ctx,
                                              timedelta_remaining: datetime.timedelta = None):
-            member_time_roles = await database.get_member_time_role_from_guild(role.id, ctx.guild_id)
+            member_time_roles = await self.database.get_member_time_role_from_guild(role.id, ctx.guild_id)
                 
             remaining_times = []
             for member_time_role in member_time_roles:
@@ -145,7 +146,7 @@ class ShowCog(commands.Cog):
 
             if value == "" and timedelta_remaining is None:
                 value = "Nobody have this timed role"
-                embed = discord.Embed(
+                embed = Embed(
                     title="Member with the time role {}".format(role.name),
                     description="Nobody have this timed role {}".format(role.mention))
                 await ctx.respond(embed=embed)
@@ -159,15 +160,15 @@ class ShowCog(commands.Cog):
                 await paginator.respond(ctx.interaction, ephemeral=True)
         
     @slash_command(guild_ids=guildIds, description="Show all the user of a timed role. The time until expire is also shown")
-    async def show_timed_role_users(self, ctx: discord.ApplicationContext, 
-                                    role: discord.Option(discord.Role, "The common role of the members")):
+    async def show_timed_role_users(self, ctx: ApplicationContext, 
+                                    role: Option(Role, "The common role of the members")):
         await ctx.defer(ephemeral=True)
-        global_time_role = await database.get_global_time_role(role.id, ctx.guild_id)
+        global_time_role = await self.database.get_global_time_role(role.id, ctx.guild_id)
         
         if global_time_role is None:
             await self.send_member_time_role_response(role, ctx)
         else:
-            timezone = await database.get_timezone(ctx.guild_id)
+            timezone = await self.database.get_timezone(ctx.guild_id)
             end_datatime = datetime.datetime.strptime(global_time_role[1], datetime_strptime)
             if timezone is None:
                 timedelta_remaining = end_datatime - datetime.datetime.now()
@@ -178,7 +179,7 @@ class ShowCog(commands.Cog):
                                  minute=now.minute, second=now.second,
                                  microsecond=now.microsecond)
                 timedelta_remaining = end_datatime - now
-            embed = discord.Embed(
+            embed = Embed(
             title="The role {} is a global".format(role.name),
             description="The role {} will expire for everyone at {} \n There is {} time left".format(
                 role.mention, global_time_role[1], timedelta_remaining))

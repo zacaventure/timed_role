@@ -1,25 +1,23 @@
 import discord
-from discord.commands import (  # Importing the decorator that makes slash commands.
-    slash_command,
-)
-from discord.ext import commands
+from discord.commands import slash_command
+from cogs.WriteCog import WriteCog
 from constant import guildIds
-import database.database as database
 
-class RemoveCog(commands.Cog):
+class RemoveCog(WriteCog):
     def __init__(self, bot):
-        self.bot = bot
+        super().__init__(bot)
         
     @slash_command(guild_ids=guildIds, description="Remove a timed role of your server")     
     @discord.default_permissions(manage_roles=True)
     async def remove_timed_role_from_server(self, ctx: discord.ApplicationContext,
                                             role: discord.Option(discord.Role, "The time role to be remove from your server")):
         await ctx.defer()
-        is_in = await database.is_time_role_in_database(role.id, ctx.guild_id)
+        is_in = await self.database.is_time_role_in_database(role.id, ctx.guild_id)
         if is_in:
-            await database.remove_server_time_role(role.id, ctx.guild_id)
+            await self.database.remove_server_time_role(role.id, ctx.guild_id)
             embed = discord.Embed(title="Remove successfull",
                                   description="The role {} was removed from the time role of the server !".format(role.mention))
+            await self.database.commit()
             await ctx.respond(embed=embed)
         else:
             embed = discord.Embed(
@@ -33,11 +31,12 @@ class RemoveCog(commands.Cog):
     async def remove_global_timed_role(self, ctx: discord.ApplicationContext,
                                        role: discord.Option(discord.Role, "The global time role to be remove from your server")):
         await ctx.defer()
-        is_in = await database.is_global_time_role_in_database(role.id, ctx.guild_id)
+        is_in = await self.database.is_global_time_role_in_database(role.id, ctx.guild_id)
         if is_in:
-            await database.remove_global_time_role(role.id, ctx.guild_id)
+            await self.database.remove_global_time_role(role.id, ctx.guild_id)
             embed = discord.Embed(title="Remove successfull",
                                   description="The global role {} was removed from the global timed role of the server !".format(role.mention))
+            await self.database.commit()
             await ctx.respond(embed=embed)
         else:
             embed = discord.Embed(
@@ -60,14 +59,15 @@ class RemoveCog(commands.Cog):
             await ctx.respond(embed=embed)
             return
         
-        isIn = await database.is_member_time_role_in_database(role.id, member.id, ctx.guild_id)
+        isIn = await self.database.is_member_time_role_in_database(role.id, member.id, ctx.guild_id)
 
         if isIn:
-            await database.remove_member_time_role(role.id, member.id, ctx.guild_id)
+            await self.database.remove_member_time_role(role.id, member.id, ctx.guild_id)
             await member.remove_roles(role)
             embed = discord.Embed(
             title="Remove Sucess",
             description="The time role {} was removed from the user {}".format(role.mention, member.mention))
+            await self.database.commit()
             await ctx.respond(embed=embed)
         else:
             embed = discord.Embed(
