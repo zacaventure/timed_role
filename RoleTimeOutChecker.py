@@ -9,7 +9,7 @@ import datetime
 from discord.ext import commands, tasks
 from cogs.Util import is_connected_to_internet
 from constant import loop_time_check_seconds
-
+import traceback
 
 class RoleTimeOutChecker(commands.Cog):
     def __init__(self, bot: TimeRoleBot):
@@ -37,6 +37,7 @@ class RoleTimeOutChecker(commands.Cog):
                 await self.database.remove_expired_global_time_role(self.bot, self.logger)
                 await self.database.commit()
             except Exception as error:
+                traceback.print_exc()
                 self.logger.error("Exception while running time checker. Excepton {}".format(error))
             delta = datetime.datetime.now() - start
             if delta > self.longestTimedelta:

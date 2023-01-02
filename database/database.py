@@ -465,9 +465,13 @@ class Database:
         return len(to_delete)
     
     async def backup(self, file: str):
+        """
+        NOT WORKING WITH NEW CODE
         async with aiosqlite.connect(file) as db_backup:
             await self.commit()
             await self.connection.backup(db_backup)
+        """
+        pass
           
     async def close(self) -> None:
         await self.commit()
