@@ -131,3 +131,4 @@ dmypy.json
 *.bin
 *.log
 *.db
+*.db-journal

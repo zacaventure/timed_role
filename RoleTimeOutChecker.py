@@ -1,5 +1,5 @@
 from __future__ import annotations
-from logging import getLogger, ERROR, INFO
+from logging import getLogger, INFO
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from timeRoleBot import TimeRoleBot
@@ -37,8 +37,8 @@ class RoleTimeOutChecker(commands.Cog):
                 await self.database.remove_expired_global_time_role(self.bot, self.logger)
                 await self.database.commit()
             except Exception as error:
-                self.logger.log(ERROR, "Exception while running time checker. Excepton {}".format(error))
-            delta = datetime.datetime.now()-start
+                self.logger.error("Exception while running time checker. Excepton {}".format(error))
+            delta = datetime.datetime.now() - start
             if delta > self.longestTimedelta:
                 self.logger.log(INFO, "New longest loop: {}".format(delta))
                 self.longestTimedelta = delta

@@ -35,7 +35,6 @@ class BackupGenerator(commands.Cog):
         else:
             self.logger.error("The dir {} does not exist".format(BACKUP_DIR))
 
-    @tasks.loop(hours=5)
+    @tasks.loop(seconds=5)
     async def backup_loop(self) -> None:
-        # await self.backup_now()
-        pass
+        await self.backup_now()
