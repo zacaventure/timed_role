@@ -10,6 +10,7 @@ from cogs.ShowCog import ShowCog
 from cogs.TimezoneCog import TimezoneCog
 from database.database import Database
 import logging
+from aiohttp.client_exceptions import ClientConnectorError
 from datetime import datetime
 from asyncio import to_thread
 import discord
@@ -160,7 +161,7 @@ class TimeRoleBot(discord_bot):
             if role_get is None:
                 try:
                     role_get: discord.Role = await guild._fetch_role(role_id) 
-                except aiohttp.client_exceptions.ClientConnectorError:  # type: ignore
+                except ClientConnectorError:
                     return (None, True)
                 except:
                     return (None, False)
@@ -171,7 +172,7 @@ class TimeRoleBot(discord_bot):
         if member is None:
             try:
                 member = await guild.fetch_member(member_id)
-            except aiohttp.client_exceptions.ClientConnectorError:  # type: ignore
+            except ClientConnectorError:
                 return (None, True)
             except:
                 return (None, False)
@@ -182,7 +183,7 @@ class TimeRoleBot(discord_bot):
         if guild is None:
             try:
                 guild = await self.fetch_guild(guild_id)
-            except aiohttp.client_exceptions.ClientConnectorError:  # type: ignore
+            except ClientConnectorError:
                 return (None, True)
             except:
                 return (None, False)
