@@ -10,8 +10,7 @@ import pytz
 import aiohttp
 import sqlite3
 import logging
-from constant import guildIds, DATABASE
-from time import sleep
+from constant import DATABASE
 
 if TYPE_CHECKING:
     from timeRoleBot import TimeRoleBot
@@ -25,6 +24,16 @@ class Database:
     async def connect(self) -> None:
         if self.connection is None:
             self.connection = await aiosqlite.connect(DATABASE)
+            await self.activate_wal_mode()
+            
+    async def activate_wal_mode(self) -> None:
+        activate_str = "PRAGMA journal_mode=WAL";
+        async with self.connection.cursor() as cursor:
+            result = await cursor.execute(activate_str)
+            result = (await result.fetchone())[0]
+            if result != "wal":
+                logging.getLogger("discord_backups").error("Could not activate wal mode")
+                raise Exception("Could not activate wal mode")
         
     async def create_database_if_not_exist(self) -> None:
         database_str = None
@@ -465,13 +474,10 @@ class Database:
         return len(to_delete)
     
     async def backup(self, file: str):
-        """
-        NOT WORKING WITH NEW CODE
         async with aiosqlite.connect(file) as db_backup:
             await self.commit()
-            await self.connection.backup(db_backup)
-        """
-        pass
+            async with aiosqlite.connect(DATABASE) as current_db:
+                await current_db.backup(db_backup)
           
     async def close(self) -> None:
         await self.commit()
