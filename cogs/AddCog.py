@@ -34,8 +34,7 @@ class AddCog(WriteCog):
                                     hour : discord.Option(int, "The hour when the global role expire", min_value=0, max_value=23, default=0), 
                                     minute : discord.Option(int, "The minute when the global role expire", min_value=0, max_value=60, default=0)):
         await ctx.defer()
-        if not self.canTheBotHandleTheRole(ctx, role):
-            await ctx.respond("That role {} is higher than the highest role of the bot timed_role. The bot cannot manipulate that role. Please change the role order if you want to create a timed role".format(role.mention))
+        if not await self.check_for_bot_permissions_and_hierarchie(ctx, role):
             return
         timezone = await self.database.get_timezone(ctx.guild_id)
         now = datetime.datetime.now()
@@ -82,8 +81,7 @@ class AddCog(WriteCog):
                                     add_to_existing_members : discord.Option(bool, "If the bot need to give a time role to member who already have the role", default=True)):
         await ctx.defer()
         timedelta = datetime.timedelta(days=days, hours=hours, minutes=minutes)
-        if not self.canTheBotHandleTheRole(ctx, role):
-            await ctx.respond("That role {} is higher than the highest role of the bot timed_role. The bot cannot manipulate that role. Please change the role order if you want to create a timed role".format(role.mention))
+        if not await self.check_for_bot_permissions_and_hierarchie(ctx, role):
             return
         previous_deltime = await self.database.insert_or_update_time_role(role.id, timedelta, ctx.guild_id)
         embed = None
@@ -129,11 +127,10 @@ class AddCog(WriteCog):
                                     hours : discord.Option(int, "The number of hours days before the role expire (is adding time on top of days)", min_value=0, default=0), 
                                     minutes : discord.Option(int, "The number of minutes days before the role expire (is adding time on top of days and hours)", min_value=0, default=0)):
         await ctx.defer()
+        if not await self.check_for_bot_permissions_and_hierarchie(ctx, role):
+            return
         if not isinstance(member, discord.Member):
             await ctx.respond(f"That user is not in your guild anymore (but can still be in your cache)")
-            return
-        if not self.canTheBotHandleTheRole(ctx, role):
-            await ctx.respond("That role {} is higher than the highest role of the bot timed_role. The bot cannot manipulate that role. Please change the role order if you want to create a timed role".format(role.mention))
             return
         timedelta = datetime.timedelta(days=days, hours=hours, minutes=minutes)
         await self.database.insert_if_not_exist_guild(ctx.guild_id)

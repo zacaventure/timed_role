@@ -32,7 +32,7 @@ class Database:
             result = await cursor.execute(activate_str)
             result = (await result.fetchone())[0]
             if result != "wal":
-                logging.getLogger("discord_backups").error("Could not activate wal mode")
+                logging.getLogger("start").error("Could not activate wal mode")
                 raise Exception("Could not activate wal mode")
         
     async def create_database_if_not_exist(self) -> None:
