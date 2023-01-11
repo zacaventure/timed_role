@@ -49,4 +49,13 @@ class WriteCog(Cog):
             return False
         return True
         
+    async def check_for_bot_ready(self, ctx: ApplicationContext) -> bool:
+        if not self.bot.bot_can_start_write_commands:
+            embed = Embed(
+                title="Bot is booting up",
+                color=0xFF0000,
+                description=f"Please wait for the bot to be ready, it won't take long")
+            await ctx.respond(embed=embed)
+            return False
+        return True
     

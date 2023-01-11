@@ -39,11 +39,13 @@ class TimeRoleBot(discord_bot):
         self.add_cog(RemoveCog(self))
         
         self.setup_done = False
+        self.bot_can_start_write_commands = False
         self.bot_start_time = None
         
     async def on_connect(self):
         self.bot_start_time = datetime.now(LOCAL_TIME_ZONE)
         await self.database.connect()
+        await self.database.create_database_if_not_exist()
         return await super().on_connect()
         
     async def on_ready(self):
@@ -51,7 +53,6 @@ class TimeRoleBot(discord_bot):
             try:
                 self.start_logger.info("The bot started in {} ".format( datetime.now(LOCAL_TIME_ZONE) - self.bot_start_time))
                 print("We have logged in as {0.user}".format(self))
-                await self.database.create_database_if_not_exist()
                 
                 await self.backup.backup_now(additional_info="_before_setup")
                 self.start_logger.info("Backup on start done")
@@ -62,6 +63,7 @@ class TimeRoleBot(discord_bot):
                 self.start_logger.info("Time checker loop started successfully")
                 
                 await self.check_bot_still_in_server()
+                self.bot_can_start_write_commands = True
                 
                 # run in a other thread because is CPU heavy
                 start_time = datetime.now(LOCAL_TIME_ZONE)   

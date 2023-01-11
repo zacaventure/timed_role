@@ -81,6 +81,8 @@ class AddCog(WriteCog):
                                     add_to_existing_members : discord.Option(bool, "If the bot need to give a time role to member who already have the role", default=True)):
         await ctx.defer()
         timedelta = datetime.timedelta(days=days, hours=hours, minutes=minutes)
+        if not await self.check_for_bot_ready(ctx) and add_to_existing_members:
+            return
         if not await self.check_for_bot_permissions_and_hierarchie(ctx, role):
             return
         previous_deltime = await self.database.insert_or_update_time_role(role.id, timedelta, ctx.guild_id)
