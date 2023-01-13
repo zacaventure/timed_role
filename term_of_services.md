@@ -23,6 +23,10 @@ He has faith in the end users being truthfull about their information and not mi
 We reserve the right to update these terms at our own discretion, giving you a 1-Week (7 days) period to opt out of these terms if you're not agreeing with the new changes.
 You may opt out by Removing the bot from any Server you have the rights for.
 
+## Code usage (running the bot yourseft)
+This code can only be used in a personnal way. No commercial use can be done without my personal authorization.
+The bot must not be monetized or become verified by discord, usage must strictly stay personal for user’s private servers.
+
 ## Contact
 People may get in contact through the [official Support Discord of the Bot](https://discord.com/invite/hRTHpB4HUC).
 
