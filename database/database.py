@@ -473,6 +473,78 @@ class Database:
         await self.commit()
         return len(to_delete)
     
+    async def get_server_count(self):
+        query = """
+        SELECT COUNT(*)
+        FROM Guild;
+        """
+        result = await self._get_first_in_database(query)
+        if result is None:
+            return 0
+        return result[0]
+    
+    def calculate_mean(self, result, server_count):
+        if len(result) == 0:
+            return 0
+        total = 0
+        for row in result:
+            total += sum(row)
+        return round(total / len(result), 2), round(total / server_count, 2)
+    
+    async def get_time_roles_counts(self, guild_id: int):
+        query = """
+        SELECT COUNT(*)
+        FROM Member_time_role 
+        WHERE(guild_id=?) ;
+        """
+        result = await self._get_first_in_database(query, (guild_id,))
+        return result[0]
+    
+    async def get_time_roles_counts_avg(self):
+        query = """
+        SELECT COUNT(*)
+        FROM Member_time_role 
+        GROUP BY guild_id;
+        """
+        result = await self.connection.execute_fetchall(query)
+        return self.calculate_mean(result, await self.get_server_count())
+
+    async def get_server_time_roles_counts(self, guild_id: int):
+        query = """
+        SELECT COUNT(*)
+        FROM Time_role 
+        WHERE(guild_id=?) ;
+        """
+        result = await self._get_first_in_database(query, (guild_id,))
+        return result[0]
+    
+    async def get_server_time_roles_counts_avg(self):
+        query = """
+        SELECT COUNT(*)
+        FROM Time_role
+        GROUP BY guild_id;
+        """
+        result = await self.connection.execute_fetchall(query)
+        return self.calculate_mean(result, await self.get_server_count())
+    
+    async def get_global_time_roles_counts(self, guild_id: int):
+        query = """
+        SELECT COUNT(*)
+        FROM Global_time_role 
+        WHERE(guild_id=?) ;
+        """
+        result = await self._get_first_in_database(query, (guild_id,))
+        return result[0]
+    
+    async def get_global_time_roles_counts_avg(self):
+        query = """
+        SELECT COUNT(*)
+        FROM Global_time_role
+        GROUP BY guild_id;
+        """
+        result = await self.connection.execute_fetchall(query)
+        return self.calculate_mean(result, await self.get_server_count())
+    
     async def backup(self, file: str):
         async with aiosqlite.connect(file) as db_backup:
             await self.commit()

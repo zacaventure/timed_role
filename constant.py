@@ -5,6 +5,10 @@ import pytz
 # load .env variables
 load_dotenv()
 
+# help server
+ADMIN_COMMANDS_SERVER = [937141485822951445]
+# ADMIN_COMMANDS_SERVER = None
+
 # guildIds = [833210288681517126] # test discord server
 guildIds = None # force global commands
 

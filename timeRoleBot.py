@@ -7,6 +7,7 @@ from RoleTimeOutChecker import RoleTimeOutChecker
 from cogs.AddCog import AddCog
 from cogs.RemoveCog import RemoveCog
 from cogs.ShowCog import ShowCog
+from cogs.StatsCog import StatsCog
 from cogs.TimezoneCog import TimezoneCog
 from database.database import Database
 import logging
@@ -37,10 +38,23 @@ class TimeRoleBot(discord_bot):
         self.add_cog(ShowCog(self))
         self.add_cog(self.addCog)
         self.add_cog(RemoveCog(self))
+        self.add_cog(StatsCog(self.database))
         
         self.setup_done = False
         self.bot_can_start_write_commands = False
         self.bot_start_time = None
+        
+    async def on_resumed(self):
+        self.start_logger.info("Reconnect to discord")
+        await self.check_bot_still_in_server()
+        # run in a other thread because is CPU heavy
+        start_time = datetime.now(LOCAL_TIME_ZONE)   
+        inserts = await to_thread(self.check_for_member_changes)
+        if len(inserts) > 0:
+            await self.database.insert_all_member_time_role(inserts)
+            await self.database.commit()
+        self.start_logger.info("Changes in members setup finish. Added {} rows.  Took {}".format(
+            len(inserts), datetime.now(LOCAL_TIME_ZONE) - start_time))
         
     async def on_connect(self):
         self.bot_start_time = datetime.now(LOCAL_TIME_ZONE)
