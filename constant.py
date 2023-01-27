@@ -5,12 +5,16 @@ import pytz
 # load .env variables
 load_dotenv()
 
+TESTING = False
+
 # help server
 ADMIN_COMMANDS_SERVER = [937141485822951445]
-# ADMIN_COMMANDS_SERVER = None
+if TESTING:
+    ADMIN_COMMANDS_SERVER = None
 
-# guildIds = [833210288681517126] # test discord server
-guildIds = None # force global commands
+guildIds = [833210288681517126] # test discord server
+if not TESTING:
+    guildIds = None # force global commands
 
 
 loop_time_check_seconds = 60
@@ -23,6 +27,7 @@ default_database = os.path.join(os.path.dirname(os.path.realpath(__file__)), "ti
 default_timezone = "EST"
 default_backup = os.path.join(os.path.dirname(os.path.realpath(__file__)), "backups")
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+RES_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "res")
 
 LOG_DIR_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "logs")
 if not os.path.exists(LOG_DIR_PATH):
@@ -41,6 +46,8 @@ if BACKUP_DIR is None:
     BACKUP_DIR = default_backup
 
 TOKEN = os.getenv("TOKEN")
+if TESTING:
+    TOKEN = os.getenv("TEST_TOKEN")
 
 if TOKEN is None:
     raise Exception("Missing your token, create a .env file with TOKEN = 'your bot token' ")

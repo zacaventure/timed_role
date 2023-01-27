@@ -35,6 +35,7 @@ class StatsCog(Cog):
         embed.add_field(name="RAM", value=f"{psutil.virtual_memory()[2]:.2f} % used")
         disk_usage = psutil.disk_usage(dirname(self.database_path))
         embed.add_field(name="DISK", value=f"{disk_usage.percent} % used")
+        embed.set_footer(text="If you like the bot, please consider supporting it at: https://ko-fi.com/champymarty_botdev")
         await ctx.respond(embed=embed)
         
     @stats.command(guild_ids=guildIds, description="Show the stats of your server")      
@@ -50,6 +51,8 @@ class StatsCog(Cog):
         
         nb_time_roles = await self.dabase.get_time_roles_counts(ctx.guild_id)
         embed.add_field(name="Time role count", value=f"{nb_time_roles} roles")
+        
+        embed.set_footer(text="If you like the bot, please consider supporting it at: https://ko-fi.com/champymarty_botdev")
         await ctx.respond(embed=embed)
         
     @slash_command(guild_ids=ADMIN_COMMANDS_SERVER, description="Show the admin stats")

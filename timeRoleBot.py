@@ -8,6 +8,7 @@ from cogs.AddCog import AddCog
 from cogs.RemoveCog import RemoveCog
 from cogs.ShowCog import ShowCog
 from cogs.StatsCog import StatsCog
+from cogs.SupportCog import SupportCog
 from cogs.TimezoneCog import TimezoneCog
 from database.database import Database
 import logging
@@ -39,6 +40,7 @@ class TimeRoleBot(discord_bot):
         self.add_cog(self.addCog)
         self.add_cog(RemoveCog(self))
         self.add_cog(StatsCog(self.database))
+        self.add_cog(SupportCog(self))
         
         self.setup_done = False
         self.bot_can_start_write_commands = False
