@@ -1,6 +1,9 @@
 
 from __future__ import annotations
-from typing import TYPE_CHECKING
+import asyncio
+from multiprocessing import Pool
+from multiprocessing.pool import AsyncResult
+from typing import TYPE_CHECKING, AsyncGenerator, Generator
 
 from datetime import datetime, timedelta
 from constant import datetime_strptime
@@ -205,6 +208,35 @@ class Database:
         WHERE ( id = ? AND guild_id = ?) ;
         """
         return await self._get_first_in_database(select, (role_id, guild_id))
+
+    async def get_recurrent_time_role(self, role_id: int, guild_id: int):
+        select = """
+        SELECT *
+        FROM
+            Recurrent_time_role
+        WHERE ( id = ? AND guild_id = ?) ;
+        """
+        return await self._get_first_in_database(select, (role_id, guild_id))
+    
+    async def get_recurrent_time_roles_of_server(self, guild_id: int) -> list[tuple[int, str, int]]:
+        select = """
+        SELECT id, next_datetime, deltatime
+        FROM
+            Recurrent_time_role
+        WHERE guild_id = ?;
+        """
+        async with self.connection.execute(select, (guild_id,)) as cursor:
+            return await cursor.fetchall()
+        
+    async def get_all_recurrent_time_roles(self, guild_id: int) -> list[tuple]:
+        select = """
+        SELECT *
+        FROM
+            Recurrent_time_role
+        WHERE guild_id = ?;
+        """
+        async with self.connection.execute(select, (guild_id,)) as cursor:
+            return await cursor.fetchall()
     
     async def insert_or_update_global_time_role(self, role_id: int, end_datetime: datetime,
                                       guild_id: int, delete_from_guild: bool) -> str | None:
@@ -227,6 +259,41 @@ class Database:
             await self.connection.execute(insert_time_role_querry, 
                     (role_id, end_datetime.strftime(datetime_strptime), guild_id, delete_from_guild))
             return None
+
+    async def insert_or_update_recurring_time_role(self, role_id: int, guild_id: int, 
+                        start_datetime: datetime, deltatime: timedelta) -> str | None:
+        await self.insert_if_not_exist_guild(guild_id, None)
+
+        insert_querry = """
+        INSERT INTO Recurrent_time_role (id, guild_id, start_datetime, next_datetime, deltatime)
+        VALUES(?, ?, ?, ?, ?);
+        """
+        
+        update_time_role = """
+        UPDATE Recurrent_time_role
+        SET start_datetime = ?, next_datetime = ?, deltatime = ?
+        WHERE id = ? AND guild_id = ? ;"""
+        
+        recurrent_time_role = await self.get_recurrent_time_role(role_id, guild_id)
+        next_datetime = self.calculate_next_datetime_recurrent_time_role(
+            start_datetime, deltatime, None if recurrent_time_role is None else recurrent_time_role[3]
+        )
+        next_datetime_str = next_datetime.strftime(datetime_strptime)
+        start_datetime_str = start_datetime.strftime(datetime_strptime)
+        if recurrent_time_role is not None:
+            await self.connection.execute(update_time_role, (start_datetime_str, next_datetime_str, deltatime.total_seconds(), role_id, guild_id))
+            return (False, next_datetime)
+        else:
+            await self.connection.execute(insert_querry, 
+                    (role_id, guild_id, start_datetime_str, next_datetime_str, deltatime.total_seconds()))
+            return (True, start_datetime_str, next_datetime_str, deltatime)
+    
+    def calculate_next_datetime_recurrent_time_role(self, start_datetime: datetime, deltatime: timedelta,
+            next_datetime: datetime) -> datetime:
+        if next_datetime is None:
+            return start_datetime
+        else:
+            return next_datetime + deltatime
         
     async def get_all_global_time_roles(self, guild_id: int):
         select = """
@@ -260,24 +327,7 @@ class Database:
         UPDATE Guild
         SET timezone = ?
         WHERE id = ? ;"""
-        
-        update_timezone_global_time_roles_querry = """
-        UPDATE Global_time_role
-        SET end_datetime = ?
-        WHERE id = ? AND guild_id = ?;"""
-        
         await self.connection.execute(update_timezone_querry, (timezone, guild_id))
-        global_time_roles = await self.get_all_global_time_roles(guild_id)
-        updates = []
-        for id, end_datetime in global_time_roles:
-            end_datetime = datetime.strptime(end_datetime, datetime_strptime)
-            new_end_datetime = datetime(year=end_datetime.year, month=end_datetime.month,
-                                    day=end_datetime.day, hour=end_datetime.hour,
-                                    minute=end_datetime.minute, second=end_datetime.second,
-                                    microsecond=end_datetime.microsecond, 
-                                    tzinfo=pytz.timezone(timezone))
-            updates.append((new_end_datetime.strftime(datetime_strptime), id, guild_id))
-        await self.connection.executemany(update_timezone_global_time_roles_querry, updates)
         return old_timezone
     
     async def _is_in_database(self, querry: str, data=None) -> bool:
@@ -400,7 +450,30 @@ class Database:
             WHERE(id=? AND guild_id=?)
             """
             await self.connection.executemany(remove_global_time_role_querry, to_delete_roles)
-            
+
+
+    async def get_all_expired_recurrent_roles(self) -> AsyncGenerator[tuple[int, int, str, timedelta, datetime]]:
+        select = """
+        SELECT r.id, r.guild_id, r.next_datetime, g.timezone, r.deltatime
+        FROM Recurrent_time_role as r INNER JOIN Guild as g
+        ON g.id = r.guild_id;
+        """
+        async with self.connection.execute(select) as cursor:
+            async for row in cursor:
+                if row[3] is None:
+                    now = datetime.now()
+                else:
+                    now = datetime.now(tz=pytz.timezone(row[3]))
+                if now.strftime(datetime_strptime) > row[2]:
+                    yield (row[1], row[0], row[2], timedelta(seconds=row[4]), now)
+
+    async def update_next_datetime_recurrent_roles(self, recurrents_roles: list[tuple[str, int, int]]) -> None:
+        remove_querry = """
+        UPDATE Recurrent_time_role
+        SET next_datetime = ?
+        WHERE(id=? AND guild_id=?);
+        """
+        await self.connection.executemany(remove_querry, recurrents_roles)
             
     async def remove_member_time_role(self, role_id: int, member_id: int, guild_id: int) -> None:
         remove_member_time_role_querry = """
@@ -421,12 +494,19 @@ class Database:
             if commit:
                 await self.commit()
             
-    async def remove_member(self, member_id: int, guild_id):
+    async def remove_member(self, member_id: int, guild_id: int):
         querry = """
         DELETE FROM Member_time_role
         WHERE(member_id=? AND guild_id=?)
         """
         await self.connection.execute(querry, (member_id, guild_id))
+
+    async def remove_recurrent_time_role(self, role_id: int, guild_id: int):
+        querry = """
+        DELETE FROM Recurrent_time_role
+        WHERE(id=? AND guild_id=?)
+        """
+        await self.connection.execute(querry, (role_id, guild_id))
         
     async def remove_server_time_role(self, role_id: int, guild_id: int):
         remove_server_time_role_querry = """

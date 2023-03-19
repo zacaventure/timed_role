@@ -17,8 +17,8 @@ if not TESTING:
     guildIds = None # force global commands
 
 
-loop_time_check_seconds = 60
-MAX_ITEM_PER_PAGES_DEFAULT = 12
+loop_time_check_seconds = 1
+MAX_ITEM_PER_PAGES_DEFAULT = 10
 
 # defaults
 # ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,6 +48,8 @@ if BACKUP_DIR is None:
 TOKEN = os.getenv("TOKEN")
 if TESTING:
     TOKEN = os.getenv("TEST_TOKEN")
+
+SUPPORT_SERVER_INVITE_URL = "https://discord.gg/hRTHpB4HUC"
 
 if TOKEN is None:
     raise Exception("Missing your token, create a .env file with TOKEN = 'your bot token' ")

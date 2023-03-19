@@ -1,9 +1,9 @@
 import sqlite3
 from typing import Any
+from background_tasks.RoleTimeOutChecker import RoleTimeOutChecker
 from discord.ext.commands import Bot as discord_bot
-from BackupGenerator import BackupGenerator
-from MarkdownDiscord import Message
-from RoleTimeOutChecker import RoleTimeOutChecker
+from background_tasks.BackupGenerator import BackupGenerator
+from exceptions.ExceptionHandler import ExceptionHandler
 from cogs.AddCog import AddCog
 from cogs.RemoveCog import RemoveCog
 from cogs.ShowCog import ShowCog
@@ -16,7 +16,6 @@ from aiohttp.client_exceptions import ClientConnectorError
 from datetime import datetime
 from asyncio import to_thread
 import discord
-from discord.ext.commands.errors import MissingPermissions
 from constant import DATABASE, LOCAL_TIME_ZONE
 from constant import datetime_strptime
 
@@ -32,12 +31,10 @@ class TimeRoleBot(discord_bot):
         self.start_logger: logging.Logger = logging.getLogger("start")
         self.command_logger: logging.Logger = logging.getLogger("commands")
         self.event_logger: logging.Logger = logging.getLogger("bot_events")
-        
-        self.addCog = AddCog(self)
-        
+                
         self.add_cog(TimezoneCog(self))
         self.add_cog(ShowCog(self))
-        self.add_cog(self.addCog)
+        self.add_cog(AddCog(self))
         self.add_cog(RemoveCog(self))
         self.add_cog(StatsCog(self.database))
         self.add_cog(SupportCog(self))
@@ -45,6 +42,16 @@ class TimeRoleBot(discord_bot):
         self.setup_done = False
         self.bot_can_start_write_commands = False
         self.bot_start_time = None
+
+    def get_commands_as_dict(self) -> dict[str, discord.SlashCommand]:
+        commands = {}
+        for _, value in self.all_commands.items():
+            if isinstance(value, discord.SlashCommand):
+                commands[f"{value.name}"] = value
+            if isinstance(value, discord.SlashCommandGroup):
+                for slash_command in value.walk_commands():
+                    commands[f"{value.name} {slash_command.name}"] = slash_command
+        return commands
         
     async def on_resumed(self):
         self.start_logger.info("Reconnect to discord")
@@ -63,7 +70,7 @@ class TimeRoleBot(discord_bot):
         await self.database.connect()
         await self.database.create_database_if_not_exist()
         return await super().on_connect()
-        
+
     async def on_ready(self):
         if not self.setup_done:
             try:
@@ -113,8 +120,10 @@ class TimeRoleBot(discord_bot):
         await self.database.remove_guild(guild.id, commit=True)
         
     async def on_guild_role_delete(self, role: discord.Role):
-        # No need to remove role from members, because the on_member_update event will be trigger for each member who lost the role
         await self.database.remove_global_time_role(role.id, role.guild.id)
+        await self.database.remove_recurrent_time_role(role.id, role.guild.id)
+
+        # No need to remove role from members, because the on_member_update event will be trigger for each member who lost the role
         await self.database.remove_server_time_role(role.id, role.guild.id)
         
     async def on_member_remove(self, member: discord.Member):
@@ -135,25 +144,9 @@ class TimeRoleBot(discord_bot):
         for deleted_role in deleted_roles:
             await self.database.remove_member_time_role(deleted_role.id, after.id, after.guild.id)
             
-    async def on_application_command_error(self, ctx: discord.ApplicationContext, error: Exception):
-        if isinstance(error, MissingPermissions):
-            message = Message();
-            message.addLine("Sorry {}, you do not have permissions to do that! You need to have manage_role permission".format(ctx.author.mention))
-            embed = discord.Embed(title="Missing permissions", description=message.getString());
-            await ctx.respond(embed=embed)
-        else:
-            error_id = datetime.now(tz=LOCAL_TIME_ZONE).strftime("%Y%m%d%H%M%S") + str(ctx.guild.id) + str(ctx.author.id)
-            discord_message = """Your error code is {}
-            If you want support show that error code in the Support server: {}
-            Error: {}""".format(error_id, "https://discord.gg/hRTHpB4HUC", error)
-            embed = discord.Embed(title="Something went wrong", color=0xFF0000, description=discord_message);
-            embed.set_footer(text="If you wait to long, your error will be deleted from the logs")
-            await ctx.respond(embed=embed)
-            message = """id -> {}
-            On guild {} by user {} 
-            On command {} with values {}
-            Error -> {}""".format(error_id, ctx.guild, ctx.author, ctx.command.name, ctx.selected_options, error)
-            self.command_logger.error(message)
+    async def on_application_command_error(self, ctx: discord.ApplicationContext, error: discord.DiscordException):
+        handler = ExceptionHandler(ctx, error)
+        await handler.handle()
             
     def check_for_member_changes(self):
         inserts = []
@@ -174,7 +167,7 @@ class TimeRoleBot(discord_bot):
         self.start_logger.log(logging.INFO, "Changes in guilds setup finish. {} Guild deleted after {}".format(
             nb_guild_deleted, datetime.now() - start_time))
         
-    async def get_or_fetch_role(self, guild: discord.Guild, role_id: int):
+    async def get_or_fetch_role(self, guild: discord.Guild, role_id: int) -> tuple[discord.Role | None, bool]:
             role_get = guild.get_role(role_id)
             if role_get is None:
                 try:

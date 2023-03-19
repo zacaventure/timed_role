@@ -1,5 +1,4 @@
-from discord import ApplicationContext, Role, Option, Member, Embed
-from discord.commands import slash_command
+from discord import ApplicationContext, Role, Member, Embed, SlashCommandGroup, Guild, option
 from discord.ext import commands
 from discord.utils import get
 
@@ -12,65 +11,89 @@ from database.database import Database
 
 
 class ShowCog(commands.Cog):
+
     def __init__(self, bot):
         self.bot = bot
         self.database: Database = self.bot.database
 
-    @slash_command(guild_ids=guildIds, description="Show all the individual and global timed role of your server")
+    SHOW_GROUP = SlashCommandGroup("show", "Command group to show various timed role types")
+
+    @SHOW_GROUP.command(guild_ids=guildIds, name="all", description="Show all the server, global and recurrent timed role of your server")
     async def show_timed_role_of_server(self, ctx: ApplicationContext):
         await ctx.defer(ephemeral=True)
+        timezone = await self.database.get_timezone(ctx.guild_id)
         
-        server_time_roles = await self.database.get_all_server_time_roles(ctx.guild_id)
+        paginator_server = await self.generate_server_time_role_paginator(ctx.guild)
+        paginator_global = await self.generate_global_time_role_paginator(ctx.guild, timezone)
+        paginator_recurrent = await self.generate_recurrent_time_role_paginator(ctx.guild, timezone)
+
+        await paginator_server.respond(ctx.interaction, ephemeral=True)
+        await paginator_global.respond(ctx.interaction, ephemeral=True)
+        await paginator_recurrent.respond(ctx.interaction, ephemeral=True)
+
+    async def generate_recurrent_time_role_paginator(self, guild: Guild, timezone: datetime.timedelta, member:Member=None):
+        recurrent_roles = await self.database.get_recurrent_time_roles_of_server(guild.id)
+        roles = []
+        for row in recurrent_roles:
+            role, _ = await self.bot.get_or_fetch_role(guild, row[0])
+            if role is not None and (member is None or role in member.roles):
+                roles.append((role.mention, row[1], datetime.timedelta(seconds=row[2])))
+        
+        roles.sort()
+        description = "No recurrent time role in your server" if len(roles) == 0 else ""
+        for index, role_info in enumerate(roles):
+            description += f"{index + 1}) {role_info[0]} next expiration on {role_info[1]} (delta={role_info[2]})\n"
+        title = "Recurrent time role" if timezone is None else f"Recurrent time role (on timezone {timezone})"
+        return get_paginator(description, titles=title)
+
+    async def generate_server_time_role_paginator(self, guild: Guild):
+        server_time_roles = await self.database.get_all_server_time_roles(guild.id)
         server_time_roles.sort(key=lambda x: x[1]) # Sort with expiration days
                 
         value_server=""
         i = 1
         for roleId, timedelta_s in server_time_roles:
-            role_get: Role = ctx.guild.get_role(roleId)
-            if role_get is None:
-                try:
-                    role_get: Role = await ctx.guild._fetch_role(roleId)
-                except:
-                    pass
+            role, _ = await self.bot.get_or_fetch_role(guild, roleId)
+            if role is None:
+                continue
             timedelta = datetime.timedelta(seconds=timedelta_s)
-            if role_get is not None:
-                value_server += "{}) {} with a time delta of {} \n".format(i, role_get.mention, str(timedelta).split(".")[0])
-                i += 1
+            formated_delta = str(timedelta).split(".")[0]
+            value_server += f"{i}) {role.mention} with a time delta of {formated_delta} \n"
+            i += 1
         if value_server == "":
             value_server = "No timed role for your server" 
-        paginator_server = get_paginator(value_server, titles="Timed role of your server")
-        
-        
+        return get_paginator(value_server, titles="Timed role of your server")
+    
+    async def generate_global_time_role_paginator(self, guild: Guild, timezone: datetime.timedelta, member: Member=None):
         value_global=""
         i = 1
-        global_time_roles = await self.database.get_all_global_time_roles(ctx.guild_id)
-        timezone = await self.database.get_timezone(ctx.guild_id)
+        global_time_roles = await self.database.get_all_global_time_roles(guild.id)
         global_time_roles.sort(key=lambda x: x[1]) # Sort with end date
         for id, end_datetime in global_time_roles:
-            role_get: Role = ctx.guild.get_role(id)
-            if role_get is None:
-                try:
-                    role_get: Role = await ctx.guild._fetch_role(id)
-                except:
-                    pass
-            if role_get is not None:
-                if timezone is None:
-                    value_global += "{}) {} expire on {} \n".format(i, role_get.mention, end_datetime)
-                else:
-                    value_global += "{}) {} expire on {} in {} \n".format(i, role_get.mention, end_datetime, timezone)
-                i += 1
+            role, _ = await self.bot.get_or_fetch_role(guild, id)
+            if role is None or (member is not None and not (role in member.roles) ):
+                continue
+            
+            if timezone is None:
+                value_global += f"{i}) {role.mention} expire on {end_datetime} \n"
+            else:
+                value_global += f"{i}) {role.mention} expire on {end_datetime} in {timezone} \n"
+            i += 1
         if value_global == "":
             value_global = "No global timed role for your server"
-        paginator_global = get_paginator(value_global,
-                                         titles="Global timed role of your server",
-                                         footers="Note: Global roles expire for everyone in the server at the same time !")
-            
-        await paginator_server.respond(ctx.interaction, ephemeral=True)
-        await paginator_global.respond(ctx.interaction, ephemeral=True)
+
+        return get_paginator(
+            value_global, titles="Global timed role of your server" if member is None else f"Global timed role of {member.name}",
+            footers="Note: Global roles expire for everyone in the server at the same time !"
+            )
         
-    @slash_command(guild_ids=guildIds, description="Show all the individual and global timed role of a member")
-    async def show_timed_role_of_member(self, ctx: ApplicationContext,
-                                        member: Option(Member, "The member which roles will be show")):
+    @SHOW_GROUP.command(guild_ids=guildIds, name="member", description="Show all the individual, global and recurrent timed role of a member")
+    @option(
+        "role",
+        description="The member which roles will be show",
+        type=Member
+    )
+    async def show_timed_role_of_member(self, ctx: ApplicationContext, member: Member):
         await ctx.defer(ephemeral=True)
 
         member_time_roles = await self.database.get_member_time_role(member.id, ctx.guild_id)
@@ -92,30 +115,13 @@ class ShowCog(commands.Cog):
         paginator_server = get_paginator(value, titles="Timed role of {}".format(member.name))
         
         
-        global_time_roles = await self.database.get_all_global_time_roles(ctx.guild_id)
-        global_time_roles.sort(key=lambda x: x[1]) # Sort with end date
         timezone = await self.database.get_timezone(ctx.guild_id)
-        value=""
-        i = 1
-        for id, end_datetime in global_time_roles:
-            role_get: Role = ctx.guild.get_role(id)
-            if role_get is None:
-                try:
-                    role_get: Role = await ctx.guild._fetch_role(id)
-                except:
-                    pass
-            if role_get in member.roles and role_get is not None:
-                if timezone is None:
-                    value += "{}) {} that expire for everyone on {} \n".format(i, role_get.mention, end_datetime)
-                else:
-                    value += "{}) {} that expire for everyone on {} in {} \n".format(i, role_get.mention, end_datetime, timezone)
-            i += 1
-        if value == "":
-            value = "No global timed role for {}".format(member.name) 
-        paginator_global = get_paginator(value, titles="Global timed role of {}".format(member.name))
+        paginator_global = await self.generate_global_time_role_paginator(ctx.guild, timezone, member=member)
+        paginator_recurrent = await self.generate_recurrent_time_role_paginator(ctx.guild, timezone, member=member)
         
         await paginator_server.respond(ctx.interaction, ephemeral=True)
         await paginator_global.respond(ctx.interaction, ephemeral=True)
+        await paginator_recurrent.respond(ctx.interaction, ephemeral=True)
         
     async def send_member_time_role_response(self, role: Role, ctx,
                                              timedelta_remaining: datetime.timedelta = None):
@@ -159,29 +165,59 @@ class ShowCog(commands.Cog):
                 paginator = get_paginator(value, titles=title.format(role.name))
                 await paginator.respond(ctx.interaction, ephemeral=True)
         
-    @slash_command(guild_ids=guildIds, description="Show all the user of a timed role. The time until expire is also shown")
-    async def show_timed_role_users(self, ctx: ApplicationContext, 
-                                    role: Option(Role, "The common role of the members")):
+    @SHOW_GROUP.command(guild_ids=guildIds, name="role", description="Show all the user of a timed role. The time until expire is also shown")
+    @option(
+        "role",
+        description="The common role of the members",
+        type=Role
+    )
+    async def show_timed_role_users(self, ctx: ApplicationContext, role: Role):
         await ctx.defer(ephemeral=True)
+
         global_time_role = await self.database.get_global_time_role(role.id, ctx.guild_id)
+        recurrent_time_role = await self.database.get_recurrent_time_role(role.id, ctx.guild_id)
         
-        if global_time_role is None:
-            await self.send_member_time_role_response(role, ctx)
+        if global_time_role is None and recurrent_time_role is None:
+            return await self.send_member_time_role_response(role, ctx)
+
+        timezone = await self.database.get_timezone(ctx.guild_id)
+        if timezone is None:
+            timedelta_remaining = end_datatime - datetime.datetime.now()
         else:
-            timezone = await self.database.get_timezone(ctx.guild_id)
-            end_datatime = datetime.datetime.strptime(global_time_role[1], datetime_strptime)
-            if timezone is None:
-                timedelta_remaining = end_datatime - datetime.datetime.now()
-            else:
-                now = datetime.datetime.now(tz=pytz.timezone(timezone))
-                now = datetime.datetime(year=now.year, month=now.month,
-                                 day=now.day, hour=now.hour,
-                                 minute=now.minute, second=now.second,
-                                 microsecond=now.microsecond)
+            now = datetime.datetime.now(tz=pytz.timezone(timezone))
+            now = datetime.datetime(year=now.year, month=now.month,
+                                day=now.day, hour=now.hour,
+                                minute=now.minute, second=now.second,
+                                microsecond=now.microsecond)
+            title = f"The role {role.name} is a "
+            description = ""
+            if global_time_role is not None:
+                end_datatime = datetime.datetime.strptime(global_time_role[1], datetime_strptime)
                 timedelta_remaining = end_datatime - now
-            embed = Embed(
-            title="The role {} is a global".format(role.name),
-            description="The role {} will expire for everyone at {} \n There is {} time left".format(
-                role.mention, global_time_role[1], timedelta_remaining))
-            await ctx.respond(embed=embed)
-            await self.send_member_time_role_response(role, ctx, timedelta_remaining)
+                title += "global time role and a "
+                description += f"The **global** time role {role.mention} will be deleted at {global_time_role[1]}. There is {timedelta_remaining} time left \n"
+            if recurrent_time_role is not None:
+                end_datatime = datetime.datetime.strptime(recurrent_time_role[3], datetime_strptime)
+                timedelta_remaining = end_datatime - now
+                title += "recurrent time role"
+                description += f"The **recurrent** time role {role.mention} will expire for everyone at {recurrent_time_role[3]}. There is {timedelta_remaining} time left \n"
+            if title.endswith("and a "):
+                title = title[:-len("and a ")]
+        await ctx.respond(embed=Embed(title=title, description=description))
+
+    @SHOW_GROUP.command(guild_ids=guildIds, name = "recurrent_timed_roles", description="Show all recurrent timed role of server")
+    async def show_recurrent_time_role(self, ctx: ApplicationContext):
+        timezone = await self.database.get_timezone(ctx.guild_id)
+        paginator = await self.generate_recurrent_time_role_paginator(ctx.guild, timezone)
+        await paginator.respond(ctx.interaction)
+
+    @SHOW_GROUP.command(guild_ids=guildIds, name = "server_timed_roles", description="Show all server timed role of server")
+    async def show_recurrent_time_role(self, ctx: ApplicationContext):
+        paginator = await self.generate_server_time_role_paginator(ctx.guild)
+        await paginator.respond(ctx.interaction)
+
+    @SHOW_GROUP.command(guild_ids=guildIds, name = "global_timed_roles", description="Show all global timed role of server")
+    async def show_recurrent_time_role(self, ctx: ApplicationContext):
+        timezone = await self.database.get_timezone(ctx.guild_id)
+        paginator = await self.generate_global_time_role_paginator(ctx.guild, timezone)
+        await paginator.respond(ctx.interaction)
