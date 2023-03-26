@@ -17,7 +17,6 @@ if not TESTING:
     guildIds = None # force global commands
 
 
-loop_time_check_seconds = 1
 MAX_ITEM_PER_PAGES_DEFAULT = 10
 
 # defaults

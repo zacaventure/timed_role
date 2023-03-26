@@ -11,9 +11,12 @@ import datetime
 import math
 from discord.ext import commands, tasks
 from cogs.Util import is_connected_to_internet
-from constant import loop_time_check_seconds, datetime_strptime
+from constant import datetime_strptime
 
 class RoleTimeOutChecker(commands.Cog):
+
+    LOOP_TIME_CHECK_SECONDS = 60
+
     def __init__(self, bot: TimeRoleBot):
         self.bot: TimeRoleBot = bot
         self.database: Database = self.bot.database
@@ -95,7 +98,7 @@ class RoleTimeOutChecker(commands.Cog):
         await self.database.update_next_datetime_recurrent_roles(recurrent_roles_to_update_in_database)
 
 
-    @tasks.loop(seconds=loop_time_check_seconds)
+    @tasks.loop(seconds=LOOP_TIME_CHECK_SECONDS)
     async def timeChecker(self):
         if not self.isLooping and await is_connected_to_internet():
             self.isLooping = True
