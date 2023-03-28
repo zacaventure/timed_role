@@ -123,7 +123,7 @@ class AddCog(WriteCog):
                 
         if previous_timedelta_seconds is None:
             embed = discord.Embed(
-                title="Custom role delivered sucess !",
+                title="Custom role delivered successfully !",
                 color=Color.green(),
                 description="The time role {} was deliver to {} with a time delta of {}".format(role.mention, member.mention, timedelta))
             await ctx.respond(embed=embed)

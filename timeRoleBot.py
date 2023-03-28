@@ -113,11 +113,13 @@ class TimeRoleBot(discord_bot):
         return await super().on_error(event_method, *args, **kwargs)
             
     async def on_guild_join(self, guild: discord.Guild):
-        self.start_logger.log(logging.INFO, "Bot just joined {}. The bot is now in {} guilds.".format(guild, len(self.guilds)))
+        if guild is not None:
+            self.start_logger.log(logging.INFO, "Bot just joined {}. The bot is now in {} guilds.".format(guild, len(self.guilds)))
 
     async def on_guild_remove(self, guild: discord.Guild):
-        self.start_logger.log(logging.INFO, "Bot just left {}. The bot is now in {} guilds.".format(guild, len(self.guilds)))
-        await self.database.remove_guild(guild.id, commit=True)
+        if guild is not None:
+            self.start_logger.log(logging.INFO, "Bot just left {}. The bot is now in {} guilds.".format(guild, len(self.guilds)))
+            await self.database.remove_guild(guild.id, commit=True)
         
     async def on_guild_role_delete(self, role: discord.Role):
         await self.database.remove_global_time_role(role.id, role.guild.id)
